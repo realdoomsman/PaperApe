@@ -1,0 +1,55 @@
+{
+  "manifest_version": 3,
+  "name": "PaperApe - Simulated Trading",
+  "version": "1.0.0",
+  "description": "Paper trade Solana memcoins directly inside BullX, Padre, Photon, and Axiom terminals.",
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png"
+    }
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "*://*.bullx.io/*",
+        "*://*.bullx.com/*",
+        "*://*.padre.market/*",
+        "*://*.photon-sol.tinyastro.io/*",
+        "*://*.photon.tinyastro.io/*",
+        "*://*.axiom.trade/*"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "permissions": [
+    "storage",
+    "activeTab"
+  ],
+  "host_permissions": [
+    "http://localhost:3001/*",
+    "*://*.bullx.io/*",
+    "*://*.bullx.com/*",
+    "*://*.padre.market/*",
+    "*://*.photon-sol.tinyastro.io/*",
+    "*://*.photon.tinyastro.io/*",
+    "*://*.axiom.trade/*"
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["assets/*", "icons/*"],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}
