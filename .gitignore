@@ -27,3 +27,5 @@ Thumbs.db
 
 # Debug
 firebase-debug.log
+.vercel
+.env*.local
