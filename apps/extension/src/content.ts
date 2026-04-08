@@ -5,6 +5,7 @@ import { BullXAdapter } from './adapters/bullx.js';
 import { PadreAdapter } from './adapters/padre.js';
 import { PhotonAdapter } from './adapters/photon.js';
 import { AxiomAdapter } from './adapters/axiom.js';
+import { GmgnAdapter } from './adapters/gmgn.js';
 import type { BaseAdapter } from './adapters/base.js';
 
 // ─── Detect Platform ────────────────────────────────────
@@ -24,6 +25,7 @@ function createAdapter(platformId: PlatformId): BaseAdapter {
     case 'padre': return new PadreAdapter();
     case 'photon': return new PhotonAdapter();
     case 'axiom': return new AxiomAdapter();
+    case 'gmgn': return new GmgnAdapter();
   }
 }
 

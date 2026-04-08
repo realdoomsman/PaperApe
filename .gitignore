@@ -1,8 +1,29 @@
+# Dependencies
 node_modules/
+
+# Build output
 dist/
 .next/
 .turbo/
+*.tsbuildinfo
+
+# Environment
 .env
 .env.local
-*.log
+.env.*.local
+
+# OS
 .DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Debug
+firebase-debug.log

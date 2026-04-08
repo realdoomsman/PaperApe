@@ -1,156 +1,93 @@
 import type { TokenMeta } from '@paperape/shared';
 
-const BIRDEYE_API = 'https://public-api.birdeye.so';
-const apiKey = process.env.BIRDEYE_API_KEY ?? '';
+const DEXSCREENER_API = 'https://api.dexscreener.com/latest/dex';
 
-// ─── Mock Price Data (used when no API key) ─────────────
-const mockPrices: Map<string, number> = new Map();
+// ─── Price cache with 10s TTL ───────────────────────────
+const priceCache = new Map<string, { price: number; priceSol: number; liq: number; ts: number }>();
+const PRICE_TTL = 10_000;
 
-function getMockPrice(address: string): number {
-  if (!mockPrices.has(address)) {
-    // Generate a random initial price between 0.000001 and 0.01 SOL
-    mockPrices.set(address, Math.random() * 0.01);
-  }
-  const current = mockPrices.get(address)!;
-  // Simulate ±5% random walk
-  const change = 1 + (Math.random() - 0.48) * 0.1; // slight upward bias
-  const newPrice = current * change;
-  mockPrices.set(address, newPrice);
-  return newPrice;
-}
-
-// ─── Live Birdeye API ───────────────────────────────────
+// ─── Get Token Price via DexScreener ────────────────────
 export async function getTokenPrice(tokenAddress: string): Promise<{
   priceUsd: number;
   priceSol: number;
   liquidityUsd: number;
 }> {
-  if (!apiKey) {
-    const priceSol = getMockPrice(tokenAddress);
-    return {
-      priceUsd: priceSol * 170, // mock SOL/USD
-      priceSol,
-      liquidityUsd: 50_000 + Math.random() * 200_000,
-    };
+  // Check cache
+  const cached = priceCache.get(tokenAddress);
+  if (cached && Date.now() - cached.ts < PRICE_TTL) {
+    return { priceUsd: cached.price, priceSol: cached.priceSol, liquidityUsd: cached.liq };
   }
 
   try {
-    const res = await fetch(
-      `${BIRDEYE_API}/defi/price?address=${tokenAddress}`,
-      {
-        headers: {
-          'X-API-KEY': apiKey,
-          'x-chain': 'solana',
-        },
-      }
-    );
-    const json = await res.json();
-    const priceUsd = json.data?.value ?? 0;
+    const res = await fetch(`${DEXSCREENER_API}/tokens/${tokenAddress}`, {
+      headers: { 'Accept': 'application/json' },
+      signal: AbortSignal.timeout(5000),
+    });
 
-    // Get SOL price for conversion
-    const solRes = await fetch(
-      `${BIRDEYE_API}/defi/price?address=So11111111111111111111111111111111111111112`,
-      { headers: { 'X-API-KEY': apiKey, 'x-chain': 'solana' } }
-    );
-    const solJson = await solRes.json();
-    const solPriceUsd = solJson.data?.value ?? 170;
+    if (!res.ok) throw new Error(`DexScreener returned ${res.status}`);
 
-    return {
-      priceUsd,
-      priceSol: priceUsd / solPriceUsd,
-      liquidityUsd: json.data?.liquidity ?? 50_000,
-    };
+    const data = await res.json();
+    const pairs = (data.pairs ?? [])
+      .filter((p: any) => p.chainId === 'solana')
+      .sort((a: any, b: any) => (b.liquidity?.usd ?? 0) - (a.liquidity?.usd ?? 0));
+
+    if (pairs.length > 0) {
+      const p = pairs[0];
+      const priceUsd = parseFloat(p.priceUsd ?? '0');
+      const priceSol = parseFloat(p.priceNative ?? '0');
+      const liquidityUsd = p.liquidity?.usd ?? 0;
+
+      priceCache.set(tokenAddress, { price: priceUsd, priceSol, liq: liquidityUsd, ts: Date.now() });
+
+      return { priceUsd, priceSol, liquidityUsd };
+    }
   } catch (err) {
-    console.error('Birdeye API error:', err);
-    const priceSol = getMockPrice(tokenAddress);
-    return { priceUsd: priceSol * 170, priceSol, liquidityUsd: 50_000 };
+    console.warn(`[price] DexScreener lookup failed for ${tokenAddress}:`, err);
   }
+
+  // Fallback: generate mock price
+  const mockSol = 0.000001 + Math.random() * 0.01;
+  return { priceUsd: mockSol * 177, priceSol: mockSol, liquidityUsd: 50000 + Math.random() * 200000 };
 }
 
+// ─── Get Token Overview ─────────────────────────────────
 export async function getTokenOverview(tokenAddress: string): Promise<Partial<TokenMeta>> {
-  if (!apiKey) {
-    return {
-      address: tokenAddress,
-      name: 'Mock Token',
-      symbol: 'MOCK',
-      decimals: 9,
-      image: null,
-      liquidity_usd: 100_000,
-      market_cap_usd: 500_000,
-      price_usd: getMockPrice(tokenAddress) * 170,
-    };
-  }
-
   try {
-    const res = await fetch(
-      `${BIRDEYE_API}/defi/token_overview?address=${tokenAddress}`,
-      {
-        headers: {
-          'X-API-KEY': apiKey,
-          'x-chain': 'solana',
-        },
-      }
-    );
-    const json = await res.json();
-    const d = json.data;
-    return {
-      address: tokenAddress,
-      name: d?.name ?? 'Unknown',
-      symbol: d?.symbol ?? '???',
-      decimals: d?.decimals ?? 9,
-      image: d?.logoURI ?? null,
-      liquidity_usd: d?.liquidity ?? 0,
-      market_cap_usd: d?.mc ?? 0,
-      price_usd: d?.price ?? 0,
-    };
+    const res = await fetch(`${DEXSCREENER_API}/tokens/${tokenAddress}`, {
+      headers: { 'Accept': 'application/json' },
+      signal: AbortSignal.timeout(5000),
+    });
+
+    if (!res.ok) throw new Error(`DexScreener returned ${res.status}`);
+
+    const data = await res.json();
+    const pairs = (data.pairs ?? [])
+      .filter((p: any) => p.chainId === 'solana')
+      .sort((a: any, b: any) => (b.liquidity?.usd ?? 0) - (a.liquidity?.usd ?? 0));
+
+    if (pairs.length > 0) {
+      const p = pairs[0];
+      return {
+        symbol: p.baseToken?.symbol ?? 'UNK',
+        name: p.baseToken?.name ?? 'Unknown',
+        price_usd: parseFloat(p.priceUsd ?? '0'),
+        market_cap_usd: p.marketCap ?? p.fdv ?? 0,
+        liquidity_usd: p.liquidity?.usd ?? 0,
+        price_change_24h: p.priceChange?.h24 ?? 0,
+        volume_24h: p.volume?.h24 ?? 0,
+      };
+    }
   } catch (err) {
-    console.error('Birdeye overview error:', err);
-    return { address: tokenAddress, name: 'Unknown', symbol: '???' };
-  }
-}
-
-// ─── Price Streaming ────────────────────────────────────
-type PriceCallback = (price: { priceUsd: number; priceSol: number; timestamp: number }) => void;
-const priceSubscriptions: Map<string, Set<PriceCallback>> = new Map();
-let pollingInterval: ReturnType<typeof setInterval> | null = null;
-
-export function subscribeToPriceUpdates(tokenAddress: string, callback: PriceCallback): () => void {
-  if (!priceSubscriptions.has(tokenAddress)) {
-    priceSubscriptions.set(tokenAddress, new Set());
-  }
-  priceSubscriptions.get(tokenAddress)!.add(callback);
-
-  // Start polling if not already
-  if (!pollingInterval) {
-    pollingInterval = setInterval(pollPrices, 2000);
+    console.warn(`[overview] DexScreener lookup failed for ${tokenAddress}:`, err);
   }
 
-  // Return unsubscribe function
-  return () => {
-    const subs = priceSubscriptions.get(tokenAddress);
-    if (subs) {
-      subs.delete(callback);
-      if (subs.size === 0) {
-        priceSubscriptions.delete(tokenAddress);
-      }
-    }
-    if (priceSubscriptions.size === 0 && pollingInterval) {
-      clearInterval(pollingInterval);
-      pollingInterval = null;
-    }
+  return {
+    symbol: tokenAddress.slice(0, 4).toUpperCase(),
+    name: 'Unknown Token',
+    price_usd: 0,
+    market_cap_usd: 0,
+    liquidity_usd: 0,
+    price_change_24h: 0,
+    volume_24h: 0,
   };
-}
-
-async function pollPrices() {
-  for (const [address, callbacks] of priceSubscriptions) {
-    try {
-      const { priceUsd, priceSol } = await getTokenPrice(address);
-      const update = { priceUsd, priceSol, timestamp: Date.now() };
-      for (const cb of callbacks) {
-        cb(update);
-      }
-    } catch (err) {
-      console.error(`Price poll error for ${address}:`, err);
-    }
-  }
 }

@@ -1,0 +1,103 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ═══════════════════════════════════════════
+    // SECURITY RULES — PaperApe Production
+    // ═══════════════════════════════════════════
+
+    // Helper: Check if the request is authenticated
+    function isAuth() {
+      return request.auth != null;
+    }
+
+    // Helper: Check if authenticated user is accessing their own doc
+    function isOwner(userId) {
+      return isAuth() && request.auth.uid == userId;
+    }
+
+    // Helper: Validate paper balance cannot be set > 10000 or < 0 via client
+    function validBalance() {
+      return request.resource.data.paper_balance >= 0
+          && request.resource.data.paper_balance <= 10000;
+    }
+
+    // Helper: Ensure only allowed fields are written by client
+    function onlyAllowedFields(allowed) {
+      return request.resource.data.keys().hasOnly(allowed);
+    }
+
+    // ─── Users Collection ───
+    // Users can only read/update their own document
+    // Cannot directly set paper_balance (must go through API server)
+    match /users/{userId} {
+      // Read: only the owner can read their own data
+      allow read: if isOwner(userId);
+
+      // Create: only during initial signup, with restricted fields
+      allow create: if isOwner(userId)
+        && onlyAllowedFields(['email', 'displayName', 'createdAt', 'paper_balance', 'tier', 'mode'])
+        && request.resource.data.paper_balance == 100;  // Must start with exactly 100 SOL
+
+      // Update: owner can update display preferences only
+      // paper_balance, positions, trades CANNOT be modified directly by client
+      allow update: if isOwner(userId)
+        && (!request.resource.data.diff(resource.data).affectedKeys()
+              .hasAny(['paper_balance', 'total_pnl', 'positions', 'trades', 'trade_count', 'win_count']));
+    }
+
+    // ─── Positions Collection ───
+    // Read-only from client. All writes go through the API server.
+    match /users/{userId}/positions/{positionId} {
+      allow read: if isOwner(userId);
+      allow write: if false;  // Server-only writes via Admin SDK
+    }
+
+    // ─── Trades Collection ───
+    // Read-only from client. All writes go through the API server.
+    match /users/{userId}/trades/{tradeId} {
+      allow read: if isOwner(userId);
+      allow write: if false;  // Server-only writes via Admin SDK
+    }
+
+    // ─── Wallets Collection ───
+    // Users can manage their paper wallets (create/read/update/delete)
+    // But cannot set balance above 10,000 SOL
+    match /users/{userId}/wallets/{walletId} {
+      allow read: if isOwner(userId);
+      allow create: if isOwner(userId)
+        && request.resource.data.keys().hasOnly(['name', 'address', 'balance', 'isPrimary', 'createdAt'])
+        && request.resource.data.balance == 0;  // New wallets start with 0
+
+      allow update: if isOwner(userId)
+        && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['balance']));  // Can't directly edit balance
+
+      allow delete: if isOwner(userId);
+    }
+
+    // ─── Leaderboard Collection ───
+    // Publicly readable, server-only writes
+    match /leaderboard/{entryId} {
+      allow read: if true;  // Anyone can view the leaderboard
+      allow write: if false;  // Server-only writes via Admin SDK
+    }
+
+    // ─── Academy Progress ───
+    // Users can track their own lesson completion
+    match /users/{userId}/academy/{lessonId} {
+      allow read, write: if isOwner(userId);
+    }
+
+    // ─── Global Settings ───
+    // Read-only for all authenticated users
+    match /settings/{settingId} {
+      allow read: if isAuth();
+      allow write: if false;  // Admin-only
+    }
+
+    // ─── Deny all other paths ───
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

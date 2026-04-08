@@ -1,0 +1,53 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "positions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "user_id", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "created_at", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "positions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "user_id", "order": "ASCENDING" },
+        { "fieldPath": "token_address", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "positions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "user_id", "order": "ASCENDING" },
+        { "fieldPath": "created_at", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "trades",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "user_id", "order": "ASCENDING" },
+        { "fieldPath": "created_at", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "leaderboard_cache",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "weekly_pnl", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "leaderboard_cache",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "monthly_pnl", "order": "DESCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

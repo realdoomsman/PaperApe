@@ -37,7 +37,7 @@ export const PLATFORM_CONFIGS: PlatformConfig[] = [
   {
     id: 'padre',
     name: 'Padre',
-    urlPattern: /padre\.market/,
+    urlPattern: /padre\.(market|gg)|trade\.padre/,
     tokenAddressExtractor: 'url_path_segment',
   },
   {
@@ -50,6 +50,12 @@ export const PLATFORM_CONFIGS: PlatformConfig[] = [
     id: 'axiom',
     name: 'Axiom',
     urlPattern: /axiom\.trade/,
+    tokenAddressExtractor: 'url_path_segment',
+  },
+  {
+    id: 'gmgn',
+    name: 'GMGN',
+    urlPattern: /gmgn\.ai/,
     tokenAddressExtractor: 'url_path_segment',
   },
 ];

@@ -152,7 +152,7 @@ export abstract class BaseAdapter {
     row.innerHTML = `
       <div style="display:flex;align-items:center;gap:8px;">
         <span style="font-weight:600;">${position.tokenSymbol}</span>
-        ${position.isMoonBag ? '<span style="font-size:10px;background:#ff6b00;color:#000;padding:1px 4px;border-radius:3px;">🌙 MOON BAG</span>' : ''}
+        ${position.isMoonBag ? '<span style="font-size:7px;background:rgba(139,105,20,0.1);color:#8b6914;padding:1px 5px;border-radius:2px;border:1px solid rgba(139,105,20,0.2);font-weight:700;letter-spacing:0.5px;text-transform:uppercase;">MOON BAG</span>' : ''}
         <span style="font-size:9px;opacity:0.5;letter-spacing:0.5px;">PAPER</span>
       </div>
       <div style="display:flex;align-items:center;gap:16px;">

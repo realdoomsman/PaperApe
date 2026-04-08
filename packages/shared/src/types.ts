@@ -18,6 +18,16 @@ export interface TokenMeta {
   liquidity_usd: number;
   market_cap_usd: number;
   price_usd: number;
+  price_change_24h?: number;
+  volume_24h?: number;
+  // Extended metadata (from Birdeye)
+  description?: string | null;
+  website?: string | null;
+  twitter?: string | null;
+  telegram?: string | null;
+  discord?: string | null;
+  supply?: number | null;
+  holder_count?: number | null;
 }
 
 // ─── Position ───────────────────────────────────────────
@@ -81,6 +91,7 @@ export interface BuyRequest {
   token_address: string;
   amount_sol: number;
   slippage_tolerance?: number; // max slippage %, default 15
+  priority?: 'normal' | 'turbo' | 'yolo'; // transaction priority tier
 }
 
 export interface SellRequest {
@@ -111,7 +122,7 @@ export type WsServerEvent =
   | { type: 'error'; message: string };
 
 // ─── Platform Adapters ──────────────────────────────────
-export type PlatformId = 'bullx' | 'padre' | 'photon' | 'axiom';
+export type PlatformId = 'bullx' | 'padre' | 'photon' | 'axiom' | 'gmgn';
 
 export interface PlatformConfig {
   id: PlatformId;

@@ -15,9 +15,12 @@ export default function ExtensionPage() {
             Full CSS isolation. Zero conflicts with host platforms. Drag the widget anywhere. Trade without switching tabs.
           </p>
           <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginBottom: 28, flexWrap: 'wrap' }}>
-            {['BullX', 'Photon', 'Padre', 'Axiom'].map((p) => <span key={p} className="plat-tag">{p}</span>)}
+            {['BullX', 'Photon', 'Padre', 'Axiom', 'GMGN'].map((p) => <span key={p} className="plat-tag">{p}</span>)}
           </div>
-          <button className="btn primary" style={{ fontSize: 14, padding: '13px 32px' }}><IconDownload /> Download Extension</button>
+          <button className="btn primary" style={{ fontSize: 14, padding: '13px 32px' }}
+            onClick={() => { alert('Extension source is in apps/extension/\n\n1. Go to chrome://extensions\n2. Enable Developer Mode\n3. Click Load Unpacked\n4. Select the apps/extension/dist folder'); }}>
+            <IconDownload /> Install Extension
+          </button>
         </div>
       </div>
 

@@ -8,7 +8,8 @@ export class PadreAdapter extends BaseAdapter {
   readonly platformName = 'Padre';
 
   extractTokenAddress(): string | null {
-    const match = window.location.pathname.match(/\/token\/([1-9A-HJ-NP-Za-km-z]{32,44})/);
+    // Matches: /token/<CA>, /trade/solana/<CA>, /trade/<CA>
+    const match = window.location.pathname.match(/\/(?:token|trade(?:\/solana)?)\/([1-9A-HJ-NP-Za-km-z]{32,44})/);
     return match ? match[1] : null;
   }
 

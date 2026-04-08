@@ -5,283 +5,289 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>PaperApe</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Special+Elite&family=Courier+Prime:wght@400;700&display=swap" rel="stylesheet">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
-      font-family: 'Inter', system-ui, sans-serif;
-      background: #0a0a14;
-      color: #e0e0e0;
-      width: 350px;
-      min-height: 400px;
+      font-family: 'Special Elite', 'Courier Prime', 'Courier New', monospace;
+      background: #d4c8a8;
+      color: #1a1207;
+      width: 380px;
+      min-height: 480px;
     }
-
-    .popup {
-      padding: 0;
-    }
+    .mono { font-family: 'Courier Prime', 'Courier New', monospace; }
 
     /* Header */
     .header {
-      background: linear-gradient(135deg, rgba(139, 92, 246, 0.2), rgba(236, 72, 153, 0.15));
+      background: linear-gradient(135deg, rgba(45,107,63,0.06), rgba(45,107,63,0.02));
       padding: 20px;
       text-align: center;
-      border-bottom: 1px solid rgba(255,255,255,0.05);
+      border-bottom: 2px dashed rgba(90,70,40,0.15);
+      position: relative;
     }
-
-    .logo {
-      font-size: 36px;
-      margin-bottom: 6px;
+    .header::before {
+      content: '';
+      position: absolute;
+      top: -3px; left: 30px;
+      width: 80px; height: 18px;
+      background: rgba(220,210,170,0.55);
+      transform: rotate(-1.5deg);
+      border-radius: 1px;
     }
-
     .title {
-      font-size: 22px;
-      font-weight: 700;
-      background: linear-gradient(135deg, #8b5cf6, #ec4899);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      letter-spacing: 1px;
-    }
-
-    .tagline {
-      font-size: 11px;
-      color: #666;
-      margin-top: 4px;
-    }
-
-    /* Auth Section */
-    .auth-section {
-      padding: 24px 20px;
-    }
-
-    .auth-btn {
-      width: 100%;
-      padding: 14px;
-      border: none;
-      border-radius: 12px;
-      font-family: 'Inter', sans-serif;
-      font-size: 14px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.2s ease;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 10px;
-    }
-
-    .auth-btn-primary {
-      background: linear-gradient(135deg, #8b5cf6, #7c3aed);
-      color: #fff;
-      margin-bottom: 10px;
-    }
-
-    .auth-btn-primary:hover {
-      box-shadow: 0 6px 20px rgba(139, 92, 246, 0.4);
-      transform: translateY(-1px);
-    }
-
-    .auth-btn-secondary {
-      background: rgba(255,255,255,0.05);
-      border: 1px solid rgba(255,255,255,0.1);
-      color: #bbb;
-    }
-
-    .auth-btn-secondary:hover {
-      background: rgba(255,255,255,0.1);
-      color: #fff;
-    }
-
-    /* Dashboard Section */
-    .dashboard {
-      padding: 20px;
-    }
-
-    .user-card {
-      background: rgba(255,255,255,0.03);
-      border: 1px solid rgba(255,255,255,0.06);
-      border-radius: 12px;
-      padding: 16px;
-      margin-bottom: 16px;
-    }
-
-    .user-name {
-      font-size: 16px;
-      font-weight: 700;
-      color: #fff;
-      margin-bottom: 4px;
-    }
-
-    .user-balance {
-      font-size: 28px;
-      font-weight: 700;
-      background: linear-gradient(135deg, #34d399, #10b981);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      margin-top: 8px;
-    }
-
-    .user-balance-label {
-      font-size: 10px;
-      color: #666;
-      letter-spacing: 1px;
+      font-size: 22px; font-weight: 700;
+      color: #1a1207;
+      letter-spacing: 2px;
       text-transform: uppercase;
     }
+    .tagline { font-size: 11px; color: #9a8b6e; margin-top: 4px; letter-spacing: 0.5px; }
 
-    .stat-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-      margin-bottom: 16px;
+    /* ── Auth View ── */
+    .auth-section { padding: 24px 24px; text-align: center; }
+    .auth-title { font-size: 16px; font-weight: 700; margin-bottom: 6px; color: #1a1207; }
+    .auth-sub { font-size: 12px; color: #6b5d45; margin-bottom: 20px; line-height: 1.5; }
+
+    .login-btn {
+      width: 100%; padding: 12px; border: 2px solid rgba(90,70,40,0.2);
+      border-radius: 4px;
+      font-family: 'Special Elite', monospace; font-size: 13px; font-weight: 700;
+      cursor: pointer; transition: all 0.15s; display: flex;
+      align-items: center; justify-content: center; gap: 10px;
+      margin-bottom: 8px; letter-spacing: 1px;
+    }
+    .login-primary {
+      background: #2d6b3f;
+      color: #e8dfc8; border-color: #1f5530;
+      box-shadow: 3px 4px 0px rgba(60,40,10,0.25);
+    }
+    .login-primary:hover { transform: translateY(-1px); box-shadow: 4px 5px 0px rgba(60,40,10,0.3); }
+    .login-secondary {
+      background: #c9bb96; border-color: rgba(90,70,40,0.2); color: #3d3222;
+    }
+    .login-secondary:hover { background: #d4c8a8; }
+
+    .login-divider {
+      display: flex; align-items: center; gap: 12px; margin: 14px 0;
+      font-size: 9px; color: #9a8b6e; text-transform: uppercase; letter-spacing: 2px;
+    }
+    .login-divider::before, .login-divider::after {
+      content: ''; flex: 1; height: 1px; border-top: 1px dashed rgba(90,70,40,0.2);
     }
 
+    .input-group { margin-bottom: 10px; text-align: left; }
+    .input-label { font-size: 9px; font-weight: 700; color: #9a8b6e; letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 4px; }
+    .input-field {
+      width: 100%; padding: 10px 12px; background: #e8dfc8;
+      border: 2px solid rgba(90,70,40,0.15); border-radius: 3px;
+      color: #1a1207; font-family: 'Courier Prime', monospace; font-size: 13px;
+      transition: border-color 0.2s;
+    }
+    .input-field:focus { outline: none; border-color: rgba(45,107,63,0.4); }
+    .input-field::placeholder { color: #b8a97e; }
+
+    .auth-error { font-size: 11px; color: #8b2020; margin-top: 6px; min-height: 16px; }
+    .auth-toggle { font-size: 11px; color: #6b5d45; margin-top: 14px; }
+    .auth-toggle button {
+      background: none; border: none; color: #2c5f8a; font-size: 11px;
+      cursor: pointer; text-decoration: underline; font-weight: 700;
+      font-family: 'Special Elite', monospace;
+    }
+
+    /* ── Dashboard View ── */
+    .dashboard { padding: 14px; }
+    .user-card {
+      background: #e8dfc8; border: 2px dashed rgba(90,70,40,0.15);
+      border-radius: 4px; padding: 14px; margin-bottom: 10px; position: relative;
+      box-shadow: 2px 3px 8px rgba(60,40,10,0.1);
+    }
+    .user-card::before {
+      content: '';
+      position: absolute;
+      top: -3px; right: 15px;
+      width: 50px; height: 14px;
+      background: rgba(220,210,170,0.55);
+      transform: rotate(1deg);
+      border-radius: 1px;
+    }
+    .user-greeting { font-size: 11px; color: #9a8b6e; }
+    .user-name-val { font-size: 16px; font-weight: 700; color: #1a1207; margin-top: 2px; }
+    .user-balance-label { font-size: 8px; color: #9a8b6e; letter-spacing: 1.5px; text-transform: uppercase; margin-top: 10px; }
+    .user-balance-val {
+      font-size: 26px; font-weight: 700;
+      color: #2d6b3f;
+      margin-top: 2px; line-height: 1.2;
+    }
+
+    .stat-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-bottom: 10px; }
     .stat-card {
-      background: rgba(255,255,255,0.03);
-      border: 1px solid rgba(255,255,255,0.06);
-      border-radius: 10px;
-      padding: 12px;
-      text-align: center;
+      background: #e8dfc8; border: 1px solid rgba(90,70,40,0.12);
+      border-radius: 3px; padding: 10px; text-align: center;
     }
+    .stat-value { font-size: 15px; font-weight: 700; color: #1a1207; }
+    .stat-label { font-size: 7px; color: #9a8b6e; letter-spacing: 1.5px; margin-top: 2px; text-transform: uppercase; }
+    .stat-profit { color: #2d6b3f !important; }
+    .stat-loss { color: #8b2020 !important; }
 
-    .stat-value {
-      font-size: 18px;
-      font-weight: 700;
-      color: #fff;
+    /* Quick Links */
+    .quick-links { margin-bottom: 10px; }
+    .quick-link {
+      display: flex; align-items: center; gap: 10px; padding: 8px 10px;
+      border-radius: 3px; cursor: pointer; transition: all 0.12s; text-decoration: none; color: inherit;
+      border: none; background: none; width: 100%; font-family: 'Special Elite', monospace;
     }
-
-    .stat-label {
-      font-size: 9px;
-      color: #666;
-      letter-spacing: 1px;
-      margin-top: 2px;
+    .quick-link:hover { background: rgba(45,107,63,0.04); }
+    .ql-icon {
+      width: 30px; height: 30px; border-radius: 3px;
+      display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0;
+      border: 1px dashed;
     }
-
-    .stat-profit { color: #34d399 !important; }
-    .stat-loss { color: #f87171 !important; }
+    .ql-icon.green { background: rgba(45,107,63,0.06); border-color: rgba(45,107,63,0.15); }
+    .ql-icon.gold { background: rgba(139,105,20,0.06); border-color: rgba(139,105,20,0.15); }
+    .ql-icon.purple { background: rgba(44,95,138,0.06); border-color: rgba(44,95,138,0.15); }
+    .ql-text { flex: 1; text-align: left; }
+    .ql-title { font-size: 12px; font-weight: 700; color: #1a1207; }
+    .ql-desc { font-size: 9px; color: #9a8b6e; }
+    .ql-arrow { color: #9a8b6e; font-size: 11px; }
 
     /* Settings */
-    .settings {
-      padding: 0 20px 20px;
-    }
-
+    .settings { padding: 0 14px 8px; }
     .setting-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 10px 0;
-      border-bottom: 1px solid rgba(255,255,255,0.04);
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 7px 0; border-bottom: 1px dashed rgba(90,70,40,0.1);
     }
-
-    .setting-label {
-      font-size: 12px;
-      color: #999;
-    }
-
-    .setting-value {
-      font-size: 12px;
-      font-weight: 600;
-      color: #a78bfa;
-    }
-
+    .setting-label { font-size: 10px; color: #6b5d45; }
     select, input[type="number"] {
-      background: rgba(255,255,255,0.06);
-      border: 1px solid rgba(255,255,255,0.1);
-      border-radius: 6px;
-      padding: 4px 8px;
-      color: #e0e0e0;
-      font-family: 'Inter', sans-serif;
-      font-size: 12px;
-      width: 80px;
-      text-align: right;
+      background: #e8dfc8; border: 1px solid rgba(90,70,40,0.2);
+      border-radius: 3px; padding: 3px 6px; color: #1a1207;
+      font-family: 'Courier Prime', monospace; font-size: 11px; width: 80px; text-align: right;
     }
 
     .logout-btn {
-      width: 100%;
-      padding: 10px;
-      background: rgba(239, 68, 68, 0.1);
-      border: 1px solid rgba(239, 68, 68, 0.2);
-      border-radius: 8px;
-      color: #f87171;
-      font-family: 'Inter', sans-serif;
-      font-size: 12px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.2s;
-      margin-top: 12px;
+      width: 100%; padding: 8px; background: rgba(139,32,32,0.06);
+      border: 2px dashed rgba(139,32,32,0.15); border-radius: 3px;
+      color: #8b2020; font-family: 'Special Elite', monospace; font-size: 10px; font-weight: 700;
+      cursor: pointer; transition: all 0.15s; margin-top: 8px;
+      text-transform: uppercase; letter-spacing: 1px;
     }
-
-    .logout-btn:hover {
-      background: rgba(239, 68, 68, 0.2);
-    }
+    .logout-btn:hover { background: rgba(139,32,32,0.1); }
 
     .hidden { display: none; }
 
-    /* Status Indicator */
+    /* Status */
     .status {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 10px;
-      color: #666;
-      padding: 8px 20px;
-      border-top: 1px solid rgba(255,255,255,0.04);
+      display: flex; align-items: center; gap: 6px; font-size: 9px; color: #9a8b6e;
+      padding: 8px 14px; border-top: 2px dashed rgba(90,70,40,0.12);
+      letter-spacing: 0.5px;
     }
-
     .status-dot {
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      background: #10b981;
+      width: 5px; height: 5px; border-radius: 50%; background: #2d6b3f;
       animation: pulse 2s infinite;
     }
+    .status-dot.disconnected { background: #8b2020; animation: none; }
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
 
-    .status-dot.disconnected {
-      background: #ef4444;
+    .ape-rank-badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      font-size: 9px; font-weight: 700; padding: 2px 8px;
+      border-radius: 3px; background: rgba(45,107,63,0.06);
+      border: 1px dashed rgba(45,107,63,0.15); color: #2d6b3f;
+      margin-top: 6px; letter-spacing: 0.5px;
     }
 
-    @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.5; }
+    /* Paper decoration */
+    .paper-corner {
+      position: absolute; width: 12px; height: 12px;
+      border: 1px solid rgba(90,70,40,0.15);
     }
   </style>
 </head>
 <body>
   <div class="popup">
     <div class="header">
-      <div class="logo">🦍</div>
       <div class="title">PaperApe</div>
       <div class="tagline">Simulate the trenches. Risk nothing.</div>
     </div>
 
-    <!-- Login View -->
+    <!-- Auth View -->
     <div id="auth-view" class="auth-section">
-      <button class="auth-btn auth-btn-primary" id="login-google">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
-        Sign in with Google
+      <div class="auth-title">Welcome, Ape</div>
+      <div class="auth-sub">Sign in to sync your trades with the PaperApe dashboard.</div>
+
+      <button class="login-btn login-primary" id="login-webapp">
+        Sign In via Dashboard
       </button>
-      <button class="auth-btn auth-btn-secondary" id="login-apple">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
-        Sign in with Apple
-      </button>
+
+      <div class="login-divider">or use email</div>
+
+      <div id="email-form">
+        <div class="input-group">
+          <div class="input-label">Email</div>
+          <input type="email" class="input-field" id="login-email" placeholder="ape@paperape.io">
+        </div>
+        <div class="input-group">
+          <div class="input-label">Password</div>
+          <input type="password" class="input-field" id="login-password" placeholder="••••••••">
+        </div>
+        <button class="login-btn login-secondary" id="login-email-btn">
+          Sign In
+        </button>
+      </div>
+
+      <div class="auth-error" id="auth-error"></div>
+      <div class="auth-toggle">
+        <span id="auth-toggle-text">Don't have an account?</span>
+        <button id="auth-toggle-btn">Sign up</button>
+      </div>
     </div>
 
     <!-- Dashboard View -->
     <div id="dashboard-view" class="hidden">
       <div class="dashboard">
         <div class="user-card">
-          <div class="user-name" id="user-name">Anon Ape</div>
-          <div class="user-balance-label">PAPER BALANCE</div>
-          <div class="user-balance" id="user-balance">100.0000 SOL</div>
+          <div class="user-greeting">gm,</div>
+          <div class="user-name-val" id="user-name">Ape</div>
+          <div class="ape-rank-badge" id="ape-rank">Baby Ape</div>
+          <div class="user-balance-label">Paper Balance</div>
+          <div class="user-balance-val mono" id="user-balance">100.0000 SOL</div>
         </div>
 
         <div class="stat-grid">
           <div class="stat-card">
-            <div class="stat-value" id="open-positions">0</div>
-            <div class="stat-label">OPEN POSITIONS</div>
+            <div class="stat-value mono" id="open-positions">0</div>
+            <div class="stat-label">Positions</div>
           </div>
           <div class="stat-card">
-            <div class="stat-value stat-profit" id="total-pnl">+0.00%</div>
-            <div class="stat-label">TOTAL PNL</div>
+            <div class="stat-value mono stat-profit" id="total-pnl">+0.00</div>
+            <div class="stat-label">PnL (SOL)</div>
           </div>
+          <div class="stat-card">
+            <div class="stat-value mono" id="win-rate">0%</div>
+            <div class="stat-label">Win Rate</div>
+          </div>
+        </div>
+
+        <div class="quick-links">
+          <button class="quick-link" id="open-dashboard">
+            <div class="ql-icon gold">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8b6914" stroke-width="2"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg>
+            </div>
+            <div class="ql-text"><div class="ql-title">Open Dashboard</div><div class="ql-desc">Full trading view</div></div>
+            <span class="ql-arrow">&rarr;</span>
+          </button>
+          <button class="quick-link" id="open-terminal">
+            <div class="ql-icon green">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2d6b3f" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v8"/><path d="M8 12h8"/></svg>
+            </div>
+            <div class="ql-text"><div class="ql-title">Open Terminal</div><div class="ql-desc">Ape into a token</div></div>
+            <span class="ql-arrow">&rarr;</span>
+          </button>
+          <button class="quick-link" id="open-discover">
+            <div class="ql-icon purple">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2c5f8a" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+            </div>
+            <div class="ql-text"><div class="ql-title">Discover</div><div class="ql-desc">Find trending tokens</div></div>
+            <span class="ql-arrow">&rarr;</span>
+          </button>
         </div>
       </div>
 
@@ -310,6 +316,6 @@
     </div>
   </div>
 
-  <script src="popup.js"></script>
+  <script type="module" src="./popup.ts"></script>
 </body>
 </html>

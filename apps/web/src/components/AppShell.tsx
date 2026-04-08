@@ -1,111 +1,174 @@
 'use client';
-
-import { useEffect, useState } from 'react';
-import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useMode } from './ModeContext';
-import {
-  IconGrid, IconTrophy, IconClock, IconShare, IconExtension, IconLogo,
-  IconWallet, IconTerminal, IconGraduationCap, IconX, IconChevronRight, IconStar,
-  IconCompass, IconCalculator, IconSettings,
-} from './Icons';
+import Link from 'next/link';
+import { useState, useEffect, useRef } from 'react';
+import { useMode } from '@/components/ModeContext';
+import { useAuth } from '@/components/AuthContext';
+import { IconLogo, IconChart, IconTarget, IconUsers, IconWallet, IconGraduationCap, IconActivity, IconTrophy, IconChevronRight } from '@/components/Icons';
+import NotificationCenter from '@/components/NotificationCenter';
 
-const NAV = [
-  { href: '/dashboard', label: 'Dashboard', icon: IconGrid, group: 'TRADE' },
-  { href: '/terminal', label: 'Terminal', icon: IconTerminal, group: 'TRADE' },
-  { href: '/discover', label: 'Discover', icon: IconCompass, group: 'DISCOVER' },
-  { href: '/wallets', label: 'Wallets', icon: IconWallet, group: 'MANAGE' },
-  { href: '/leaderboard', label: 'Leaderboard', icon: IconTrophy, group: 'COMPETE' },
-  { href: '/history', label: 'History', icon: IconClock, group: 'COMPETE' },
-  { href: '/learn', label: 'Academy', icon: IconGraduationCap, group: 'LEARN' },
-  { href: '/tools', label: 'Tools', icon: IconCalculator, group: 'TOOLS' },
-  { href: '/share', label: 'Export', icon: IconShare, group: 'TOOLS' },
-  { href: '/extension', label: 'Extension', icon: IconExtension, group: 'TOOLS' },
+interface AppShellProps { children: React.ReactNode; balance?: number; }
+
+const PRO_NAV = [
+  { href: '/dashboard', label: 'Dashboard', icon: IconChart },
+  { href: '/terminal', label: 'Terminal', icon: IconTarget },
+  { href: '/discover', label: 'Discover', icon: IconActivity },
+  { href: '/wallets', label: 'Wallets', icon: IconWallet },
+  { href: '/leaderboard', label: 'Leaderboard', icon: IconTrophy },
+  { href: '/history', label: 'History', icon: IconUsers },
+  { href: '/learn', label: 'Academy', icon: IconGraduationCap },
 ];
 
-const ONBOARD = [
-  { title: 'Welcome to PaperApe', desc: 'Simulate real Solana trades with zero risk. You start with 100 SOL of paper money.', hl: 'No real funds. No wallet needed. Just skill.' },
-  { title: 'Two Ways to Trade', desc: 'Use the built-in Terminal or inject into BullX, Photon, Padre, or Axiom via the Chrome Extension.', hl: 'Terminal or Extension — pick your style.' },
-  { title: 'Multi-Wallet Strategies', desc: 'Create up to 5 paper wallets. Fund them with fake SOL. Compare strategies in isolation.', hl: 'Isolate and A/B test trading approaches.' },
-  { title: 'Compete and Learn', desc: 'Climb leaderboards, complete Academy lessons, and generate branded PnL cards for social sharing.', hl: 'Prove your alpha. Risk nothing.' },
+const BEG_NAV = [
+  { href: '/dashboard', label: 'Dashboard', icon: IconChart },
+  { href: '/terminal', label: 'Trade', icon: IconTarget },
+  { href: '/discover', label: 'Discover', icon: IconActivity },
+  { href: '/learn', label: 'Academy', icon: IconGraduationCap },
 ];
 
-function Modal({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const [s, setS] = useState(0);
-  if (!open) return null;
-  const data = ONBOARD[s];
-  const last = s === ONBOARD.length - 1;
-  return (
-    <div className="modal-bg" onClick={onClose}>
-      <div className="modal" onClick={(e) => e.stopPropagation()}>
-        <button className="modal-x" onClick={onClose}><IconX /></button>
-        <div className="modal-dots">{ONBOARD.map((_, i) => <div key={i} className={`modal-dot ${i === s ? 'on' : i < s ? 'ok' : ''}`} />)}</div>
-        <div className="modal-step">Step {s + 1} of {ONBOARD.length}</div>
-        <h2>{data.title}</h2>
-        <p className="modal-desc">{data.desc}</p>
-        <div className="modal-hl"><IconStar /><span>{data.hl}</span></div>
-        <div className="modal-foot">
-          {s > 0 && <button className="btn" onClick={() => setS(s - 1)}>Back</button>}
-          {last ? <button className="btn primary" onClick={onClose}>Get Started <IconChevronRight /></button>
-            : <button className="btn primary" onClick={() => setS(s + 1)}>Next <IconChevronRight /></button>}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-export default function AppShell({ children, balance = 100 }: { children: React.ReactNode; balance?: number }) {
+export default function AppShell({ children, balance }: AppShellProps) {
   const pathname = usePathname();
   const { mode, setMode } = useMode();
-  const [showModal, setShowModal] = useState(false);
-  let lastGroup = '';
+  const { user, logout, emailVerified } = useAuth();
+  const [scrolled, setScrolled] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!localStorage.getItem('pa-seen')) setShowModal(true);
+    const fn = () => setScrolled(window.scrollY > 8);
+    window.addEventListener('scroll', fn, { passive: true });
+    return () => window.removeEventListener('scroll', fn);
   }, []);
+
+  useEffect(() => {
+    const fn = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false);
+    };
+    document.addEventListener('mousedown', fn);
+    return () => document.removeEventListener('mousedown', fn);
+  }, []);
+
+  const navItems = mode === 'beginner' ? BEG_NAV : PRO_NAV;
+  const displayBal = balance ?? 100;
+  const initials = user?.displayName?.slice(0, 2).toUpperCase() || user?.email?.slice(0, 2).toUpperCase() || 'PA';
 
   return (
     <div className={`app-layout ${mode}`}>
-      <Modal open={showModal} onClose={() => { setShowModal(false); localStorage.setItem('pa-seen', '1'); }} />
-      <aside className="sidebar">
-        <div className="sb-top">
-          <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div className="sb-icon"><IconLogo /></div>
-            <span className="sb-name">PaperApe</span>
-          </Link>
-        </div>
+      {/* Disclaimer */}
+      <div className="disclaimer-bar">
+        PaperApe is a simulated environment for educational purposes only. No real funds are traded. This is not financial advice.
+      </div>
 
-        {/* Mode Toggle */}
-        <div className="mode-toggle">
-          <button className={`mode-btn ${mode === 'beginner' ? 'on' : ''}`} onClick={() => setMode('beginner')}>Beginner</button>
-          <button className={`mode-btn ${mode === 'pro' ? 'on' : ''}`} onClick={() => setMode('pro')}>Pro</button>
-        </div>
+      {/* Floating top nav */}
+      <nav className={`topnav ${scrolled ? 'scrolled' : ''}`}>
+        <Link href="/dashboard" className="nav-brand">
+          <div className="nav-logo"><IconLogo /></div>
+          <span className="nav-name">PaperApe</span>
+        </Link>
 
-        <nav className="sb-nav">
-          {NAV.map((item) => {
-            const show = item.group !== lastGroup;
-            if (show) lastGroup = item.group;
-            const I = item.icon;
-            return <div key={item.href}>
-              {show && <div className="sb-group">{item.group}</div>}
-              <Link href={item.href} className={`sb-item ${pathname === item.href ? 'on' : ''}`}><I />{item.label}</Link>
-            </div>;
+        <div className="nav-center">
+          {navItems.map(n => {
+            const I = n.icon;
+            return (
+              <Link key={n.href} href={n.href} className={`nav-link ${pathname === n.href ? 'on' : ''}`}>
+                <I />{n.label}
+              </Link>
+            );
           })}
-        </nav>
-        <div className="sb-foot">
-          <div className="sb-bal">
-            <div className="sb-bal-label">Paper Balance</div>
-            <div className="sb-bal-val">{balance.toFixed(4)}<span className="sb-bal-unit">SOL</span></div>
-          </div>
-          <button className="btn" style={{ width: '100%', justifyContent: 'center', marginTop: 8, fontSize: 11 }}
-            onClick={() => { localStorage.removeItem('pa-seen'); setShowModal(true); }}>
-            <IconGraduationCap /> Quick Tour
-          </button>
         </div>
-      </aside>
-      <div className="main">
-        <div className="gradient-bar" />
-        <div className="main-inner">{children}</div>
+
+        {/* Cmd+K hint */}
+        <button onClick={() => { window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true })); }} className="haptic" style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 10px', background: 'var(--bg-2)', border: '1px solid var(--border-0)', borderRadius: 6, cursor: 'pointer', fontSize: 9, color: 'var(--t3)', marginRight: 8 }} title="Command Palette (⌘K)">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <kbd style={{ fontFamily: 'inherit', fontSize: 9 }}>⌘K</kbd>
+        </button>
+
+        <div className="nav-right" ref={menuRef}>
+          <NotificationCenter />
+          <div className="nav-mode">
+            <button className={`nav-mode-btn ${mode === 'beginner' ? 'on' : ''}`} onClick={() => setMode('beginner')}>Beginner</button>
+            <button className={`nav-mode-btn ${mode === 'pro' ? 'on' : ''}`} onClick={() => setMode('pro')}>Pro</button>
+          </div>
+
+          <div className="nav-bal">
+            <span className="mono">{displayBal.toFixed(mode === 'pro' ? 4 : 2)}</span> SOL
+          </div>
+
+          <button className="nav-avatar" onClick={() => setMenuOpen(!menuOpen)}>
+            {initials}
+          </button>
+
+          {menuOpen && (
+            <div className="nav-menu">
+              <div style={{ padding: '8px 12px', borderBottom: '1px solid var(--border-0)', marginBottom: 4 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--t0)' }}>{user?.displayName || 'Trader'}</div>
+                <div style={{ fontSize: 11, color: 'var(--t3)' }}>{user?.email || ''}</div>
+              </div>
+              <Link href="/wallets" className="nav-menu-item" onClick={() => setMenuOpen(false)}>
+                <IconWallet /> Wallets
+              </Link>
+              <Link href="/history" className="nav-menu-item" onClick={() => setMenuOpen(false)}>
+                <IconActivity /> Trade History
+              </Link>
+              <Link href="/analytics" className="nav-menu-item" onClick={() => setMenuOpen(false)}>
+                <IconChart /> Analytics
+              </Link>
+              <div className="nav-menu-sep" />
+              <Link href="/compare" className="nav-menu-item" onClick={() => setMenuOpen(false)}>
+                <IconTarget /> Token Compare
+              </Link>
+              <Link href="/calculator" className="nav-menu-item" onClick={() => setMenuOpen(false)}>
+                <IconActivity /> Position Calculator
+              </Link>
+              <div className="nav-menu-sep" />
+              <Link href="/settings" className="nav-menu-item" onClick={() => setMenuOpen(false)}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg> Settings
+              </Link>
+              <Link href="/terms" className="nav-menu-item" onClick={() => setMenuOpen(false)}>
+                <IconGraduationCap /> Terms & Privacy
+              </Link>
+              <div className="nav-menu-sep" />
+              <button className="nav-menu-item danger" onClick={() => { logout(); setMenuOpen(false); }}>
+                <IconChevronRight /> Sign Out
+              </button>
+            </div>
+          )}
+        </div>
+      </nav>
+
+      {/* Email verification */}
+      {user && !emailVerified && (
+        <div style={{ padding: '12px 24px', paddingTop: 8 }}>
+          <div className="verify-bar">
+            <span style={{ color: 'var(--gold)', fontWeight: 700 }}>Verify</span>
+            <span style={{ color: 'var(--t1)' }}>Please verify your email. Check your inbox.</span>
+          </div>
+        </div>
+      )}
+
+      {/* Main content */}
+      <main className="app-main">
+        {children}
+      </main>
+
+      {/* Mobile bottom nav */}
+      <div className="mobile-nav">
+        <div className="mobile-nav-inner">
+          {[
+            { href: '/dashboard', label: 'Home', icon: IconChart },
+            { href: '/terminal', label: 'Trade', icon: IconTarget },
+            { href: '/discover', label: 'Discover', icon: IconActivity },
+            { href: '/wallets', label: 'Wallets', icon: IconWallet },
+            { href: '/leaderboard', label: 'Ranks', icon: IconTrophy },
+          ].map(n => {
+            const I = n.icon;
+            return (
+              <Link key={n.href} href={n.href} className={`mobile-nav-link ${pathname === n.href ? 'on' : ''}`}>
+                <I />{n.label}
+              </Link>
+            );
+          })}
+        </div>
       </div>
     </div>
   );

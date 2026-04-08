@@ -1,25 +1,41 @@
 /// <reference types="chrome" />
 
+// ─── PaperApe Popup ─────────────────────────────────────
+// Handles auth flow and syncs with the dashboard via Firebase tokens.
+
+const WEBAPP_URL = 'http://localhost:3000';
+
 // ─── Elements ───────────────────────────────────────────
 const authView = document.getElementById('auth-view')!;
 const dashboardView = document.getElementById('dashboard-view')!;
-const loginGoogleBtn = document.getElementById('login-google')!;
-const loginAppleBtn = document.getElementById('login-apple')!;
+const loginWebappBtn = document.getElementById('login-webapp')!;
+const loginEmailBtn = document.getElementById('login-email-btn')!;
+const loginEmailInput = document.getElementById('login-email') as HTMLInputElement;
+const loginPasswordInput = document.getElementById('login-password') as HTMLInputElement;
+const authError = document.getElementById('auth-error')!;
+const authToggleText = document.getElementById('auth-toggle-text')!;
+const authToggleBtn = document.getElementById('auth-toggle-btn')!;
 const logoutBtn = document.getElementById('logout-btn')!;
 const userName = document.getElementById('user-name')!;
 const userBalance = document.getElementById('user-balance')!;
 const openPositions = document.getElementById('open-positions')!;
 const totalPnl = document.getElementById('total-pnl')!;
+const winRateEl = document.getElementById('win-rate')!;
+const apeRankEl = document.getElementById('ape-rank')!;
 const statusDot = document.getElementById('status-dot')!;
 const statusText = document.getElementById('status-text')!;
 const defaultBuySelect = document.getElementById('default-buy') as HTMLSelectElement;
 const maxSlippageInput = document.getElementById('max-slippage') as HTMLInputElement;
+const openDashboardBtn = document.getElementById('open-dashboard')!;
+const openTerminalBtn = document.getElementById('open-terminal')!;
+const openDiscoverBtn = document.getElementById('open-discover')!;
+
+let isRegisterMode = false;
 
 // ─── Init ───────────────────────────────────────────────
 async function init() {
-  // Check existing auth
   const res = await sendMessage({ type: 'GET_AUTH' });
-  if (res?.data?.token) {
+  if (res?.data?.isLoggedIn) {
     await loadDashboard();
   } else {
     showAuth();
@@ -31,29 +47,66 @@ async function init() {
   if (settings.max_slippage) maxSlippageInput.value = settings.max_slippage;
 }
 
-// ─── Auth ───────────────────────────────────────────────
-loginGoogleBtn.addEventListener('click', async () => {
-  // In production, this would open a Privy auth window.
-  // For now, use mock auth.
-  const mockToken = 'mock-' + Math.random().toString(36).slice(2);
-  const res = await sendMessage({ type: 'LOGIN', accessToken: mockToken });
-  if (res?.success) {
-    await loadDashboard();
-  } else {
-    setStatus('Login failed', true);
+// ─── Web App Login ──────────────────────────────────────
+loginWebappBtn.addEventListener('click', () => {
+  chrome.tabs.create({
+    url: `${WEBAPP_URL}/login?ext=1`,
+  });
+  window.close();
+});
+
+// ─── Email Login ────────────────────────────────────────
+loginEmailBtn.addEventListener('click', async () => {
+  const email = loginEmailInput.value.trim();
+  const password = loginPasswordInput.value.trim();
+  authError.textContent = '';
+
+  if (!email || !password) {
+    authError.textContent = 'Enter email and password';
+    return;
+  }
+
+  if (isRegisterMode && password.length < 6) {
+    authError.textContent = 'Password must be 6+ characters';
+    return;
+  }
+
+  loginEmailBtn.textContent = 'Connecting...';
+  (loginEmailBtn as HTMLButtonElement).disabled = true;
+
+  try {
+    // Use a mock token based on the email for dev mode.
+    // In production, this would call the Firebase Auth REST API.
+    const mockToken = `mock-${Date.now()}-${email.replace(/[^a-z0-9]/gi, '')}`;
+    const loginRes = await sendMessage({
+      type: 'LOGIN',
+      token: mockToken,
+      user: { email, name: email.split('@')[0] },
+    });
+
+    if (loginRes?.success) {
+      await loadDashboard();
+      return;
+    }
+    throw new Error(loginRes?.error ?? 'Login failed');
+  } catch (err: any) {
+    authError.textContent = err.message ?? 'Login failed';
+  } finally {
+    loginEmailBtn.textContent = isRegisterMode ? 'Create Account' : 'Sign In';
+    (loginEmailBtn as HTMLButtonElement).disabled = false;
   }
 });
 
-loginAppleBtn.addEventListener('click', async () => {
-  const mockToken = 'mock-apple-' + Math.random().toString(36).slice(2);
-  const res = await sendMessage({ type: 'LOGIN', accessToken: mockToken });
-  if (res?.success) {
-    await loadDashboard();
-  } else {
-    setStatus('Login failed', true);
-  }
+// ─── Auth Mode Toggle ───────────────────────────────────
+authToggleBtn.addEventListener('click', () => {
+  isRegisterMode = !isRegisterMode;
+  authToggleText.textContent = isRegisterMode ? 'Already have an account?' : "Don't have an account?";
+  authToggleBtn.textContent = isRegisterMode ? 'Sign in' : 'Sign up';
+  loginEmailBtn.textContent = isRegisterMode ? 'Create Account' : 'Sign In';
+  authError.textContent = '';
 });
 
+// ─── Logout ─────────────────────────────────────────────
 logoutBtn.addEventListener('click', async () => {
   await sendMessage({ type: 'LOGOUT' });
   showAuth();
@@ -74,29 +127,56 @@ async function loadDashboard() {
 
   if (userRes?.success && userRes.data?.user) {
     const user = userRes.data.user;
-    userName.textContent = user.username;
-    userBalance.textContent = `${parseFloat(user.paper_balance).toFixed(4)} SOL`;
+    userName.textContent = user.username ?? user.email?.split('@')[0] ?? 'Ape';
+    const balance = parseFloat(user.paper_balance ?? 100);
+    userBalance.textContent = `${balance.toFixed(4)} SOL`;
+  } else {
+    userName.textContent = 'Ape';
+    userBalance.textContent = '100.0000 SOL';
   }
 
   // Fetch positions
   const posRes = await sendMessage({
     type: 'API_REQUEST',
     method: 'GET',
-    path: '/trades/positions?status=open',
+    path: '/trades/positions',
   });
 
   if (posRes?.success && posRes.data?.positions) {
     const positions = posRes.data.positions;
-    openPositions.textContent = positions.length.toString();
+    const openPos = positions.filter((p: any) => p.status === 'open');
+    openPositions.textContent = openPos.length.toString();
 
     const totalPnlValue = positions.reduce(
-      (sum: number, p: any) => sum + parseFloat(p.pnl_sol || 0),
-      0
+      (sum: number, p: any) => sum + parseFloat(p.pnl_sol || 0), 0
     );
     const sign = totalPnlValue >= 0 ? '+' : '';
-    totalPnl.textContent = `${sign}${totalPnlValue.toFixed(4)} SOL`;
-    totalPnl.className = `stat-value ${totalPnlValue >= 0 ? 'stat-profit' : 'stat-loss'}`;
+    totalPnl.textContent = `${sign}${totalPnlValue.toFixed(4)}`;
+    totalPnl.className = `stat-value mono ${totalPnlValue >= 0 ? 'stat-profit' : 'stat-loss'}`;
+
+    // Win rate
+    const wins = positions.filter((p: any) => parseFloat(p.pnl_sol || 0) > 0).length;
+    const wr = positions.length > 0 ? Math.round((wins / positions.length) * 100) : 0;
+    winRateEl.textContent = `${wr}%`;
+
+    // Ape rank
+    const rank = getApeRank(positions.length, wr, totalPnlValue);
+    apeRankEl.textContent = rank;
+  } else {
+    openPositions.textContent = '0';
+    totalPnl.textContent = '+0.0000';
+    winRateEl.textContent = '0%';
+    apeRankEl.textContent = 'Baby Ape';
   }
+}
+
+function getApeRank(trades: number, winRate: number, pnl: number): string {
+  if (trades === 0) return 'Baby Ape';
+  if (pnl < 0) return 'Paper Hands';
+  if (winRate >= 70 && trades >= 20) return 'Silverback';
+  if (winRate >= 60 && trades >= 10) return 'Alpha Ape';
+  if (winRate >= 50) return 'Rising Primate';
+  return 'Baby Ape';
 }
 
 function showAuth() {
@@ -104,6 +184,19 @@ function showAuth() {
   dashboardView.classList.add('hidden');
   setStatus('Not signed in', true);
 }
+
+// ─── Quick Links ────────────────────────────────────────
+openDashboardBtn.addEventListener('click', () => {
+  chrome.tabs.create({ url: `${WEBAPP_URL}/dashboard` });
+});
+
+openTerminalBtn.addEventListener('click', () => {
+  chrome.tabs.create({ url: `${WEBAPP_URL}/terminal` });
+});
+
+openDiscoverBtn.addEventListener('click', () => {
+  chrome.tabs.create({ url: `${WEBAPP_URL}/discover` });
+});
 
 // ─── Settings ───────────────────────────────────────────
 defaultBuySelect.addEventListener('change', () => {
@@ -125,6 +218,17 @@ function setStatus(text: string, isError: boolean) {
   statusText.textContent = text;
   statusDot.className = `status-dot ${isError ? 'disconnected' : ''}`;
 }
+
+// ─── Listen for auth changes from the web app ──────────
+chrome.storage.onChanged.addListener((changes) => {
+  if (changes.paperape_auth_token) {
+    if (changes.paperape_auth_token.newValue) {
+      loadDashboard();
+    } else {
+      showAuth();
+    }
+  }
+});
 
 // ─── Start ──────────────────────────────────────────────
 init();

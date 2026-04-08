@@ -8,7 +8,7 @@ export class AxiomAdapter extends BaseAdapter {
   readonly platformName = 'Axiom';
 
   extractTokenAddress(): string | null {
-    const match = window.location.pathname.match(/\/(?:t|token|meme)\/([1-9A-HJ-NP-Za-km-z]{32,44})/);
+    const match = window.location.pathname.match(/\/(?:t|token|meme|pulse|trade)\/([1-9A-HJ-NP-Za-km-z]{32,44})/);
     return match ? match[1] : null;
   }
 

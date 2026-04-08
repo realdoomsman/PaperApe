@@ -1,358 +1,270 @@
 /**
- * Returns the full CSS for the PaperApe Shadow DOM widget.
- * Glassmorphism dark theme, fully self-contained.
+ * PaperApe Widget Styles — Paper/Scrapbook Theme
+ * Matches the PaperApe web app design system.
+ * Self-contained CSS for the Shadow DOM widget.
  */
 export function getWidgetStyles(): string {
   return `
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Special+Elite&family=Courier+Prime:wght@400;700&display=swap');
 
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
 
     .pa-widget {
-      font-family: 'Inter', system-ui, -apple-system, sans-serif;
-      width: 320px;
-      background: rgba(16, 16, 24, 0.92);
-      backdrop-filter: blur(20px);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      border-radius: 16px;
-      box-shadow:
-        0 24px 48px rgba(0, 0, 0, 0.5),
-        0 0 0 1px rgba(255, 255, 255, 0.05),
-        inset 0 1px 0 rgba(255, 255, 255, 0.05);
-      color: #e0e0e0;
+      font-family: 'Special Elite', 'Courier Prime', 'Courier New', monospace;
+      width: 300px;
+      background: #e8dfc8;
+      border: 2px solid rgba(90,70,40,0.2);
+      border-radius: 5px;
+      box-shadow: 2px 3px 8px rgba(60,40,10,0.18), 0 1px 2px rgba(60,40,10,0.12);
+      color: #1a1207;
       overflow: hidden;
       user-select: none;
-      transition: box-shadow 0.3s ease;
+      position: relative;
+    }
+    .pa-widget::before {
+      content: '';
+      position: absolute;
+      top: -4px; left: 20px;
+      width: 60px; height: 20px;
+      background: rgba(220,210,170,0.55);
+      transform: rotate(-1deg);
+      z-index: 1;
+      border-radius: 1px;
     }
 
-    .pa-widget:hover {
-      box-shadow:
-        0 24px 48px rgba(0, 0, 0, 0.6),
-        0 0 30px rgba(139, 92, 246, 0.15),
-        0 0 0 1px rgba(139, 92, 246, 0.2);
-    }
-
-    /* ─── Header ─────────────────────────────── */
+    /* ─── Header ─── */
     .pa-header {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 12px 16px;
-      background: linear-gradient(135deg, rgba(139, 92, 246, 0.15), rgba(236, 72, 153, 0.1));
-      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      padding: 10px 14px;
+      background: linear-gradient(135deg, rgba(45,107,63,0.04), transparent);
+      border-bottom: 2px dashed rgba(90,70,40,0.15);
       cursor: grab;
     }
+    .pa-header:active { cursor: grabbing; }
 
-    .pa-header:active {
-      cursor: grabbing;
-    }
-
-    .pa-logo {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .pa-logo-icon {
-      font-size: 20px;
-      animation: bounce 2s infinite;
-    }
-
-    @keyframes bounce {
-      0%, 100% { transform: translateY(0); }
-      50% { transform: translateY(-3px); }
-    }
-
+    .pa-logo { display: flex; align-items: center; gap: 8px; }
     .pa-logo-text {
-      font-weight: 700;
-      font-size: 14px;
-      background: linear-gradient(135deg, #8b5cf6, #ec4899);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      letter-spacing: 0.5px;
+      font-weight: 700; font-size: 14px;
+      color: #1a1207;
+      letter-spacing: 1px;
+      text-transform: uppercase;
     }
 
-    .pa-header-right {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
+    .pa-header-right { display: flex; align-items: center; gap: 8px; }
     .pa-balance {
-      font-size: 12px;
-      font-weight: 600;
-      color: #a78bfa;
-      background: rgba(139, 92, 246, 0.12);
-      padding: 4px 10px;
-      border-radius: 8px;
+      font-family: 'Courier Prime', monospace;
+      font-size: 11px; font-weight: 700; color: #2d6b3f;
+      background: rgba(45,107,63,0.08);
+      padding: 3px 8px; border-radius: 3px;
+      border: 1px solid rgba(45,107,63,0.15);
     }
 
     .pa-minimize {
-      background: none;
-      border: none;
-      color: #888;
-      cursor: pointer;
-      font-size: 10px;
-      padding: 4px;
-      border-radius: 4px;
-      transition: all 0.2s;
+      background: none; border: 1px solid rgba(90,70,40,0.2);
+      color: #6b5d45; cursor: pointer; font-size: 12px; font-weight: 700;
+      padding: 1px 6px; border-radius: 3px;
+      font-family: 'Courier Prime', monospace;
     }
+    .pa-minimize:hover { color: #1a1207; background: rgba(90,70,40,0.08); }
 
-    .pa-minimize:hover {
-      color: #fff;
-      background: rgba(255, 255, 255, 0.1);
+    /* ─── Body ─── */
+    .pa-body { padding: 10px 14px 12px; }
+
+    /* ─── Notifications ─── */
+    .pa-notif {
+      padding: 6px 10px; border-radius: 3px;
+      font-size: 10px; font-weight: 700; margin-bottom: 8px;
+      border: 1px dashed;
+      animation: slideIn 0.2s ease;
     }
+    @keyframes slideIn { from { transform: translateY(-4px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    .pa-notif-success { background: rgba(45,107,63,0.08); border-color: rgba(45,107,63,0.25); color: #2d6b3f; }
+    .pa-notif-error { background: rgba(139,32,32,0.08); border-color: rgba(139,32,32,0.25); color: #8b2020; }
+    .pa-notif-info { background: rgba(44,95,138,0.08); border-color: rgba(44,95,138,0.25); color: #2c5f8a; }
+    .pa-notif-congestion { background: rgba(139,105,20,0.08); border-color: rgba(139,105,20,0.25); color: #8b6914; }
 
-    /* ─── Body ───────────────────────────────── */
-    .pa-body {
-      padding: 12px 16px 16px;
+    /* ─── Congestion ─── */
+    .pa-congestion {
+      display: flex; align-items: center; gap: 6px;
+      padding: 6px 10px; border-radius: 3px; margin-bottom: 8px;
+      background: rgba(139,105,20,0.08); border: 1px dashed rgba(139,105,20,0.2);
+      font-size: 9px; font-weight: 700; color: #8b6914;
     }
-
-    /* ─── Notification ──────────────────────── */
-    .pa-notification {
-      padding: 8px 12px;
-      border-radius: 8px;
-      font-size: 11px;
-      font-weight: 500;
-      margin-bottom: 10px;
-      animation: slideIn 0.3s ease;
+    .pa-cong-dot {
+      width: 5px; height: 5px; border-radius: 50%;
+      background: #8b6914; animation: pulse 1s infinite;
     }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
 
-    @keyframes slideIn {
-      from { transform: translateY(-8px); opacity: 0; }
-      to { transform: translateY(0); opacity: 1; }
+    /* ─── Token Info ─── */
+    .pa-token-info { margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px dashed rgba(90,70,40,0.12); }
+    .pa-token-name { font-size: 13px; font-weight: 700; color: #1a1207; margin-bottom: 1px; }
+    .pa-token-address { font-family: 'Courier Prime', monospace; font-size: 9px; color: #9a8b6e; margin-bottom: 4px; }
+    .pa-price-row { display: flex; align-items: baseline; gap: 8px; }
+    .pa-price { font-family: 'Courier Prime', monospace; font-size: 16px; font-weight: 700; color: #1a1207; }
+    .pa-price-sol { font-family: 'Courier Prime', monospace; font-size: 10px; color: #6b5d45; }
+
+    /* ─── Tabs ─── */
+    .pa-tabs {
+      display: flex; gap: 2px; margin-bottom: 10px;
     }
-
-    .pa-notification-success {
-      background: rgba(16, 185, 129, 0.15);
-      border: 1px solid rgba(16, 185, 129, 0.3);
-      color: #34d399;
+    .pa-tab-btn {
+      flex: 1; padding: 7px 0; font-weight: 700; font-size: 11px;
+      text-align: center; cursor: pointer;
+      background: #c9bb96; border: 2px solid rgba(90,70,40,0.15); color: #6b5d45;
+      font-family: 'Special Elite', monospace;
+      transition: all 0.15s; letter-spacing: 1px;
     }
+    .pa-tab-btn:hover { color: #3d3222; background: #d4c8a8; }
+    .pa-tab-active-buy { background: #2d6b3f; color: #e8dfc8; border-color: #1f5530; box-shadow: 3px 4px 0px rgba(60,40,10,0.25); }
+    .pa-tab-active-sell { background: #8b2020; color: #e8dfc8; border-color: #6d1818; box-shadow: 3px 4px 0px rgba(60,40,10,0.25); }
 
-    .pa-notification-error {
-      background: rgba(239, 68, 68, 0.15);
-      border: 1px solid rgba(239, 68, 68, 0.3);
-      color: #f87171;
-    }
-
-    /* ─── Token Info ─────────────────────────── */
-    .pa-token-info {
-      margin-bottom: 14px;
-    }
-
-    .pa-token-name {
-      font-size: 14px;
-      font-weight: 600;
-      color: #fff;
-      margin-bottom: 2px;
-    }
-
-    .pa-token-address {
-      font-size: 10px;
-      color: #666;
-      font-family: monospace;
-      margin-bottom: 6px;
-    }
-
-    .pa-price-row {
-      display: flex;
-      align-items: baseline;
-      gap: 8px;
-    }
-
-    .pa-price {
-      font-size: 18px;
-      font-weight: 700;
-      color: #fff;
-      font-variant-numeric: tabular-nums;
-    }
-
-    .pa-price-sol {
-      font-size: 11px;
-      color: #888;
-      font-variant-numeric: tabular-nums;
-    }
-
-    /* ─── Sections ───────────────────────────── */
-    .pa-section {
-      margin-bottom: 12px;
-    }
-
+    /* ─── Section ─── */
+    .pa-section { margin-bottom: 8px; }
     .pa-section-label {
-      font-size: 10px;
-      font-weight: 600;
-      color: #666;
-      letter-spacing: 1.5px;
-      margin-bottom: 8px;
+      font-size: 8px; font-weight: 700; color: #9a8b6e;
+      letter-spacing: 1.5px; margin-bottom: 5px; text-transform: uppercase;
     }
 
-    /* ─── Buy Grid ───────────────────────────── */
-    .pa-buy-grid {
-      display: grid;
-      grid-template-columns: repeat(5, 1fr);
-      gap: 6px;
-    }
-
+    /* ─── Buy Grid ─── */
+    .pa-buy-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 3px; }
     .pa-buy-btn {
-      background: linear-gradient(180deg, rgba(16, 185, 129, 0.2), rgba(16, 185, 129, 0.1));
-      border: 1px solid rgba(16, 185, 129, 0.3);
-      color: #34d399;
-      font-size: 11px;
-      font-weight: 600;
-      font-family: 'Inter', sans-serif;
-      padding: 8px 4px;
-      border-radius: 8px;
-      cursor: pointer;
-      transition: all 0.2s ease;
+      background: rgba(45,107,63,0.06);
+      border: 2px solid rgba(45,107,63,0.15);
+      color: #2d6b3f; font-size: 9px; font-weight: 700;
+      font-family: 'Courier Prime', monospace;
+      padding: 6px 2px; border-radius: 3px; cursor: pointer;
+      transition: all 0.15s;
     }
-
     .pa-buy-btn:hover:not(:disabled) {
-      background: linear-gradient(180deg, rgba(16, 185, 129, 0.35), rgba(16, 185, 129, 0.2));
-      border-color: rgba(16, 185, 129, 0.6);
+      background: rgba(45,107,63,0.12);
+      border-color: rgba(45,107,63,0.3);
+      box-shadow: 2px 2px 0px rgba(60,40,10,0.15);
       transform: translateY(-1px);
-      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
     }
+    .pa-buy-btn:disabled { opacity: 0.35; cursor: not-allowed; }
 
-    .pa-buy-btn:active:not(:disabled) {
-      transform: translateY(0);
+    /* ─── Slippage Grid ─── */
+    .pa-slip-grid { display: flex; gap: 3px; }
+    .pa-slip-btn {
+      flex: 1; padding: 4px 0; font-size: 9px; font-weight: 700;
+      text-align: center; cursor: pointer;
+      background: #d4c8a8; border: 1px solid rgba(90,70,40,0.15);
+      color: #6b5d45; border-radius: 3px; font-family: 'Courier Prime', monospace;
+      transition: all 0.15s;
     }
+    .pa-slip-btn.active { background: rgba(45,107,63,0.1); border-color: rgba(45,107,63,0.25); color: #2d6b3f; box-shadow: inset 0 0 0 1px rgba(45,107,63,0.1); }
+    .pa-slip-btn:hover { border-color: rgba(90,70,40,0.25); color: #3d3222; }
 
-    .pa-buy-btn:disabled {
-      opacity: 0.4;
-      cursor: not-allowed;
+    /* ─── Estimate ─── */
+    .pa-est {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 6px 10px; background: rgba(45,107,63,0.04);
+      border: 1px dashed rgba(90,70,40,0.12);
+      border-radius: 3px; margin-bottom: 8px;
     }
+    .pa-est-label { font-size: 9px; color: #9a8b6e; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+    .pa-est-val { font-family: 'Courier Prime', monospace; font-size: 13px; font-weight: 700; color: #1a1207; }
 
-    /* ─── Position ───────────────────────────── */
+    /* ─── Position ─── */
     .pa-position {
-      background: rgba(255, 255, 255, 0.03);
-      border: 1px solid rgba(255, 255, 255, 0.06);
-      border-radius: 10px;
-      padding: 10px 12px;
-      margin-bottom: 12px;
+      background: rgba(45,107,63,0.04);
+      border: 2px dashed rgba(90,70,40,0.12);
+      border-radius: 4px; padding: 8px 10px; margin-bottom: 8px;
     }
+    .pa-pos-head { display: flex; align-items: center; gap: 5px; margin-bottom: 4px; }
+    .pa-pos-sym { font-weight: 700; font-size: 12px; color: #1a1207; }
+    .pa-badge { font-size: 7px; font-weight: 700; padding: 1px 5px; border-radius: 2px; letter-spacing: 0.5px; text-transform: uppercase; }
+    .pa-badge-moon { background: rgba(139,105,20,0.1); color: #8b6914; border: 1px solid rgba(139,105,20,0.2); }
+    .pa-badge-rug { background: rgba(139,32,32,0.1); color: #8b2020; border: 1px solid rgba(139,32,32,0.2); }
+    .pa-pnl { margin-left: auto; font-family: 'Courier Prime', monospace; font-weight: 700; font-size: 12px; }
+    .pa-profit { color: #2d6b3f; }
+    .pa-loss { color: #8b2020; }
+    .pa-pos-info { display: flex; justify-content: space-between; font-family: 'Courier Prime', monospace; font-size: 9px; color: #6b5d45; margin-bottom: 6px; }
 
-    .pa-position-header {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-bottom: 6px;
-    }
-
-    .pa-position-symbol {
-      font-weight: 700;
-      font-size: 14px;
-      color: #fff;
-    }
-
-    .pa-moon-badge {
-      font-size: 9px;
-      background: linear-gradient(135deg, #f59e0b, #ef4444);
-      color: #000;
-      padding: 2px 6px;
-      border-radius: 4px;
-      font-weight: 700;
-    }
-
-    .pa-rug-badge {
-      font-size: 9px;
-      background: rgba(239, 68, 68, 0.3);
-      color: #f87171;
-      padding: 2px 6px;
-      border-radius: 4px;
-      font-weight: 700;
-    }
-
-    .pa-pnl {
-      margin-left: auto;
-      font-weight: 700;
-      font-size: 14px;
-      font-variant-numeric: tabular-nums;
-    }
-
-    .pa-profit { color: #34d399; }
-    .pa-loss { color: #f87171; }
-
-    .pa-position-details {
-      display: flex;
-      justify-content: space-between;
-      font-size: 11px;
-      color: #888;
-      margin-bottom: 10px;
-    }
-
-    /* ─── Sell Grid ───────────────────────────── */
-    .pa-sell-grid {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 6px;
-    }
-
+    /* ─── Sell Grid ─── */
+    .pa-sell-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 3px; }
     .pa-sell-btn {
-      background: linear-gradient(180deg, rgba(239, 68, 68, 0.2), rgba(239, 68, 68, 0.1));
-      border: 1px solid rgba(239, 68, 68, 0.3);
-      color: #f87171;
-      font-size: 11px;
-      font-weight: 600;
-      font-family: 'Inter', sans-serif;
-      padding: 7px 4px;
-      border-radius: 8px;
-      cursor: pointer;
-      transition: all 0.2s ease;
+      background: rgba(139,32,32,0.06);
+      border: 2px solid rgba(139,32,32,0.15);
+      color: #8b2020; font-size: 9px; font-weight: 700;
+      font-family: 'Courier Prime', monospace;
+      padding: 5px 2px; border-radius: 3px; cursor: pointer;
+      transition: all 0.15s;
     }
-
-    .pa-sell-btn:hover:not(:disabled) {
-      background: linear-gradient(180deg, rgba(239, 68, 68, 0.35), rgba(239, 68, 68, 0.2));
-      border-color: rgba(239, 68, 68, 0.6);
-      transform: translateY(-1px);
-      box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
-    }
-
-    .pa-sell-btn:disabled {
-      opacity: 0.4;
-      cursor: not-allowed;
-    }
+    .pa-sell-btn:hover:not(:disabled) { background: rgba(139,32,32,0.12); border-color: rgba(139,32,32,0.3); }
+    .pa-sell-btn:disabled { opacity: 0.35; cursor: not-allowed; }
 
     .pa-sell-init-btn {
-      background: linear-gradient(180deg, rgba(245, 158, 11, 0.2), rgba(245, 158, 11, 0.1));
-      border: 1px solid rgba(245, 158, 11, 0.3);
-      color: #fbbf24;
-      font-size: 10px;
-      font-weight: 700;
-      font-family: 'Inter', sans-serif;
-      padding: 7px 4px;
-      border-radius: 8px;
-      cursor: pointer;
-      transition: all 0.2s ease;
-      letter-spacing: 0.3px;
+      background: rgba(139,105,20,0.06);
+      border: 2px solid rgba(139,105,20,0.15);
+      color: #8b6914; font-size: 8px; font-weight: 700;
+      font-family: 'Special Elite', monospace;
+      padding: 5px 2px; border-radius: 3px; cursor: pointer;
+      letter-spacing: 0.5px; transition: all 0.15s;
+      text-transform: uppercase;
+    }
+    .pa-sell-init-btn:hover:not(:disabled) { background: rgba(139,105,20,0.12); border-color: rgba(139,105,20,0.3); }
+    .pa-sell-init-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+    /* ─── TPSL Toggle ─── */
+    .pa-tpsl-toggle {
+      width: 100%; padding: 5px 0; margin-top: 6px;
+      font-size: 9px; font-weight: 700; color: #2c5f8a;
+      background: rgba(44,95,138,0.04);
+      border: 1px dashed rgba(44,95,138,0.15);
+      border-radius: 3px; cursor: pointer;
+      font-family: 'Special Elite', monospace; transition: all 0.15s;
+      text-transform: uppercase; letter-spacing: 1px;
+    }
+    .pa-tpsl-toggle:hover { background: rgba(44,95,138,0.08); }
+    .pa-tpsl-toggle:disabled { opacity: 0.35; }
+
+    /* ─── TPSL Panel ─── */
+    .pa-tpsl-panel {
+      margin-top: 6px; padding: 8px;
+      background: rgba(90,70,40,0.03);
+      border: 1px dashed rgba(90,70,40,0.12);
+      border-radius: 3px;
+    }
+    .pa-tp-grid, .pa-sl-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; }
+    .pa-tp-preset, .pa-sl-preset {
+      padding: 5px 3px; font-size: 8px; font-weight: 700;
+      font-family: 'Courier Prime', monospace; border-radius: 3px;
+      cursor: pointer; transition: all 0.15s; text-align: center;
+    }
+    .pa-tp-preset {
+      background: rgba(45,107,63,0.04); border: 1px solid rgba(45,107,63,0.12); color: #2d6b3f;
+    }
+    .pa-tp-preset:hover { background: rgba(45,107,63,0.1); }
+    .pa-sl-preset {
+      background: rgba(139,32,32,0.04); border: 1px solid rgba(139,32,32,0.12); color: #8b2020;
+    }
+    .pa-sl-preset:hover { background: rgba(139,32,32,0.1); }
+
+    /* ─── Empty State ─── */
+    .pa-empty {
+      text-align: center; padding: 14px 0;
+      font-size: 10px; color: #9a8b6e;
+      font-style: italic;
     }
 
-    .pa-sell-init-btn:hover:not(:disabled) {
-      background: linear-gradient(180deg, rgba(245, 158, 11, 0.35), rgba(245, 158, 11, 0.2));
-      border-color: rgba(245, 158, 11, 0.6);
-      transform: translateY(-1px);
-      box-shadow: 0 4px 12px rgba(245, 158, 11, 0.2);
-    }
-
-    .pa-sell-init-btn:disabled {
-      opacity: 0.4;
-      cursor: not-allowed;
-    }
-
-    /* ─── Footer ─────────────────────────────── */
+    /* ─── Footer ─── */
     .pa-footer {
-      text-align: center;
-      padding-top: 8px;
-      border-top: 1px solid rgba(255, 255, 255, 0.04);
+      display: flex; align-items: center; justify-content: space-between;
+      padding-top: 6px; border-top: 1px dashed rgba(90,70,40,0.12);
+      margin-top: 4px;
     }
-
-    .pa-watermark {
-      font-size: 9px;
-      color: #444;
-      letter-spacing: 0.5px;
+    .pa-open-dash {
+      font-size: 9px; font-weight: 700; color: #2c5f8a;
+      background: none; border: none; cursor: pointer;
+      font-family: 'Special Elite', monospace;
+      text-decoration: underline; text-underline-offset: 2px;
+      text-transform: uppercase; letter-spacing: 0.5px;
     }
+    .pa-open-dash:hover { color: #1e4060; }
+    .pa-watermark { font-size: 7px; color: #b8a97e; letter-spacing: 1px; text-transform: uppercase; }
   `;
 }

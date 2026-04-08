@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite build --watch",
-    "build": "vite build",
+    "build": "vite build && sed -i '' 's|src=\"../popup/popup.js\"|src=\"./popup.js\"|g' dist/popup/popup.html && cp manifest.json dist/ && cp -r icons dist/",
     "lint": "tsc --noEmit"
   },
   "dependencies": {
