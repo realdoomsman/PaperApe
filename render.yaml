@@ -3,15 +3,21 @@ services:
     name: paperape-api
     runtime: node
     region: oregon
-    plan: free
-    buildCommand: npm install --include=dev && npm run build --workspace=@paperape/shared && npm run build --workspace=@paperape/api
+    plan: starter
+    buildCommand: npm install && npm run build --workspace=@paperape/shared && npm run build --workspace=@paperape/api
     startCommand: node apps/api/dist/server.js
+    healthCheckPath: /health
+    autoDeploy: true
     envVars:
-      - key: MOCK_MODE
-        value: "true"
-      - key: PORT
-        value: "10000"
       - key: NODE_ENV
         value: production
+      - key: PORT
+        value: "10000"
       - key: CORS_ORIGINS
-        value: "https://paperape.vercel.app"
+        value: "https://paperape.vercel.app,https://paperape.com,https://www.paperape.com"
+      - key: FIREBASE_PROJECT_ID
+        sync: false
+      - key: FIREBASE_CLIENT_EMAIL
+        sync: false
+      - key: FIREBASE_PRIVATE_KEY
+        sync: false
