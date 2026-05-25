@@ -621,6 +621,19 @@ button{cursor:pointer;border:none;background:none;font-family:inherit;}
 /* Stackable toast overrides */
 .toast { position: relative !important; margin: 0 !important; }
 
+/* ══════ MODAL ══════ */
+.modal-bg{
+  position:fixed;inset:0;z-index:10000;
+  background:rgba(0,0,0,0.55);backdrop-filter:blur(4px);
+  display:flex;align-items:center;justify-content:center;
+  animation:fadeInUp 0.15s var(--ease);
+}
+.modal-panel{
+  background:var(--bg-1);border:2px solid var(--border-1);
+  border-radius:var(--r-lg);box-shadow:0 20px 60px rgba(0,0,0,0.35);
+  animation:fadeInUp 0.2s var(--ease);
+}
+
 /* ══════ RESPONSIVE ══════ */
 
 /* How It Works grid */
