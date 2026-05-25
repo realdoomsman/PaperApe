@@ -3,11 +3,12 @@ services:
     name: paperape-api
     runtime: node
     region: oregon
-    plan: starter
+    plan: standard  # $25/mo — 1 CPU, 2GB RAM, always-on
     buildCommand: npm install && npm run build --workspace=@paperape/shared && npm run build --workspace=@paperape/api
     startCommand: node apps/api/dist/server.js
     healthCheckPath: /health
     autoDeploy: true
+    numInstances: 1
     envVars:
       - key: NODE_ENV
         value: production
@@ -15,9 +16,21 @@ services:
         value: "10000"
       - key: CORS_ORIGINS
         value: "https://paperape.vercel.app,https://paperape.com,https://www.paperape.com"
+      # Firebase (REQUIRED)
       - key: FIREBASE_PROJECT_ID
         sync: false
       - key: FIREBASE_CLIENT_EMAIL
         sync: false
       - key: FIREBASE_PRIVATE_KEY
+        sync: false
+      # Helius RPC — $49/mo (https://dev.helius.xyz)
+      - key: HELIUS_API_KEY
+        sync: false
+      # Birdeye Pro — $49/mo (https://birdeye.so/api)
+      - key: BIRDEYE_API_KEY
+        sync: false
+      # Upstash Redis — ~$10/mo (https://upstash.com)
+      - key: UPSTASH_REDIS_REST_URL
+        sync: false
+      - key: UPSTASH_REDIS_REST_TOKEN
         sync: false

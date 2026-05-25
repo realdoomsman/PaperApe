@@ -26,34 +26,31 @@ const corsOrigins = (process.env.CORS_ORIGINS ?? 'http://localhost:3000')
 app.use(cors({ origin: corsOrigins, credentials: true }));
 app.use(express.json());
 
-// ─── Rate Limiting (60 req/min per IP) ──────────────────
-const rateLimitStore: Map<string, { count: number; resetAt: number }> = new Map();
-const RATE_LIMIT_WINDOW = 60_000; // 1 minute
-const RATE_LIMIT_MAX = 60;
+// ─── Rate Limiting (300 req/min per IP — Redis-backed) ──
+import { checkRateLimit } from './lib/cache.js';
 
-app.use((req, res, next) => {
+const RATE_LIMIT_MAX = 300;
+const RATE_LIMIT_WINDOW = 60; // seconds
+
+app.use(async (req, res, next) => {
   const ip = req.ip || req.socket.remoteAddress || 'unknown';
-  const now = Date.now();
-  const entry = rateLimitStore.get(ip);
 
-  if (entry && now < entry.resetAt) {
-    if (entry.count >= RATE_LIMIT_MAX) {
+  try {
+    const result = await checkRateLimit(ip, RATE_LIMIT_MAX, RATE_LIMIT_WINDOW);
+    res.setHeader('X-RateLimit-Limit', RATE_LIMIT_MAX);
+    res.setHeader('X-RateLimit-Remaining', result.remaining);
+    res.setHeader('X-RateLimit-Reset', Math.ceil(result.resetAt / 1000));
+
+    if (!result.allowed) {
       return res.status(429).json({ success: false, error: 'Rate limit exceeded. Try again later.' });
     }
-    entry.count++;
-  } else {
-    rateLimitStore.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW });
-  }
-
-  // Clean old entries every 100 requests
-  if (rateLimitStore.size > 1000) {
-    for (const [key, val] of rateLimitStore.entries()) {
-      if (now > val.resetAt) rateLimitStore.delete(key);
-    }
+  } catch {
+    // If rate limiter fails, allow the request
   }
 
   next();
 });
+
 
 // ─── Health Check ───────────────────────────────────────
 app.get('/health', (_req, res) => {

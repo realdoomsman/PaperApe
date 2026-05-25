@@ -9,7 +9,8 @@ import { getTokenPrice } from '../services/birdeye.js';
 // Fallback: if MEVX is down, we poll DexScreener on a slower interval.
 
 const MEVX_WS_URL = 'wss://ws.mevx.io/api/v1/ws';
-const FALLBACK_POLL_INTERVAL = 15_000; // 15s polling fallback
+const HELIUS_WS_URL = process.env.HELIUS_API_KEY ? `wss://mainnet.helius-rpc.com/?api-key=${process.env.HELIUS_API_KEY}` : '';
+const FALLBACK_POLL_INTERVAL = 5_000; // 5s polling fallback (premium speed)
 
 interface ClientState {
   ws: WebSocket;
