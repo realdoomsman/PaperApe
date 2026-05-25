@@ -623,6 +623,9 @@ button{cursor:pointer;border:none;background:none;font-family:inherit;}
 
 /* ══════ RESPONSIVE ══════ */
 
+/* How It Works grid */
+.hiw-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;}
+
 /* Tablet */
 @media(max-width:1024px){
   .terminal-grid{grid-template-columns:1fr !important;}
@@ -638,6 +641,7 @@ button{cursor:pointer;border:none;background:none;font-family:inherit;}
   .lb-row{grid-template-columns:36px 1fr 100px;}
   .lb-top3{grid-template-columns:1fr !important;}
   .app-main{padding-left:12px;padding-right:12px;padding-bottom:80px;}
+  .hiw-grid{grid-template-columns:1fr;}
 }
 
 /* Mobile */

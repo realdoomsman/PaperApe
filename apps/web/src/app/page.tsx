@@ -65,7 +65,7 @@ export default function HomePage() {
         {/* How it Works */}
         <section style={{ maxWidth: 900, margin: '0 auto', padding: '60px 20px 40px' }}>
           <h2 style={{ textAlign: 'center', fontSize: 24, fontWeight: 800, marginBottom: 40, color: 'var(--t0)' }}>How it Works</h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 24 }}>
+          <div className="hiw-grid">
             {[
               { step: '01', title: 'Sign Up Free', desc: 'Create an account in seconds. No KYC, no deposits, no credit card required.', color: 'var(--green)' },
               { step: '02', title: 'Get 100 Paper SOL', desc: 'Start with 100 simulated SOL. Trade any Solana token with live prices.', color: 'var(--cyan)' },
@@ -83,7 +83,7 @@ export default function HomePage() {
 
         {/* Social Proof */}
         <section style={{ maxWidth: 900, margin: '0 auto', padding: '0 20px 60px' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
+          <div className="hiw-grid">
             {[
               { quote: 'Finally a way to practice trading memecoins without losing my rent money.', author: 'FreshApe420', tier: 'Diamond Hands' },
               { quote: 'The slippage simulation is surprisingly realistic. Taught me more than any YouTube video.', author: 'SolanaShark', tier: 'HIMOTHY' },
