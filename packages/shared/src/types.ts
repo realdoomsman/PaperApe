@@ -1,7 +1,7 @@
 // ─── User ───────────────────────────────────────────────
 export interface User {
   id: string;
-  privy_id: string;
+  firebase_uid: string;
   username: string;
   avatar_url: string | null;
   paper_balance: number; // in SOL

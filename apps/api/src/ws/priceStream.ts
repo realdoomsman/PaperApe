@@ -336,10 +336,21 @@ export function setupPriceStream(wss: WebSocketServer) {
   console.log('⚡ Price stream initialized (MEVX Smart Router + DexScreener fallback + heartbeat)');
 }
 
-function handleClientEvent(client: ClientState, event: WsClientEvent) {
+async function handleClientEvent(client: ClientState, event: WsClientEvent) {
   switch (event.type) {
     case 'auth':
-      client.authenticated = true;
+      try {
+        const { verifyFirebaseToken } = await import('../services/auth.js');
+        const user = await verifyFirebaseToken(event.token);
+        if (user) {
+          client.authenticated = true;
+          (client as any).userId = user.id;
+        } else {
+          sendToClient(client, { type: 'error', message: 'Invalid auth token' });
+        }
+      } catch {
+        sendToClient(client, { type: 'error', message: 'Auth verification failed' });
+      }
       break;
 
     case 'subscribe_price':

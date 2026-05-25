@@ -95,6 +95,31 @@ service cloud.firestore {
       allow write: if false;  // Admin-only
     }
 
+    // ─── Auto-Orders ───
+    // Server-only writes, user can read their own
+    match /users/{userId}/auto_orders/{orderId} {
+      allow read: if isOwner(userId);
+      allow write: if false;  // Server-only writes via Admin SDK
+    }
+
+    // ─── DCA Orders ───
+    match /users/{userId}/dca_orders/{orderId} {
+      allow read: if isOwner(userId);
+      allow write: if false;  // Server-only writes via Admin SDK
+    }
+
+    // ─── Alerts ───
+    match /users/{userId}/alerts/{alertId} {
+      allow read: if isOwner(userId);
+      allow write: if false;  // Server-only writes via Admin SDK
+    }
+
+    // ─── Tracked Wallets ───
+    match /users/{userId}/tracked_wallets/{walletAddress} {
+      allow read: if isOwner(userId);
+      allow write: if false;  // Server-only writes via Admin SDK
+    }
+
     // ─── Deny all other paths ───
     match /{document=**} {
       allow read, write: if false;

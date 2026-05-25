@@ -9,7 +9,7 @@ import {
 import type { Position, Trade, BuyRequest, SellRequest, SellInitRequest } from '@paperape/shared';
 import { db, isMockMode } from '../lib/firebase.js';
 import { getTokenPrice, getTokenOverview } from './birdeye.js';
-import { mockUsers } from './privy.js';
+import { mockUsers } from './auth.js';
 
 // ─── In-Memory Mock Stores ──────────────────────────────
 export const mockPositions: Map<string, any[]> = new Map(); // userId -> positions
@@ -17,6 +17,14 @@ const mockTrades: any[] = [];
 let mockIdCounter = 1;
 
 function genId() { return `mock-${mockIdCounter++}`; }
+
+// ─── Firestore Subcollection Helpers ────────────────────
+function userPositionsCol(userId: string) {
+  return db.collection('users').doc(userId).collection('positions');
+}
+function userTradesCol(userId: string) {
+  return db.collection('users').doc(userId).collection('trades');
+}
 
 // ─── Congestion Simulation ──────────────────────────────
 function getCongestionLevel(): 'low' | 'medium' | 'high' {
@@ -151,90 +159,103 @@ export async function executeBuy(userId: string, req: BuyRequest): Promise<{
     return { position, trade, congestion: txSim.congestion };
   }
 
-  // ─── Real Firebase Mode ───────────────────────────────
+  // ─── Real Firebase Mode (Atomic Transaction) ─────────
   const userDocRef = db.collection('users').doc(userId);
-  const userSnapshot = await userDocRef.get();
-  const userData = userSnapshot.data();
+  const positionsCol = userPositionsCol(userId);
+  const tradesCol = userTradesCol(userId);
 
-  if (!userSnapshot.exists || !userData || (userData.paper_balance ?? 0) < req.amount_sol) {
-    throw new Error(`Insufficient balance. Have ${userData?.paper_balance ?? 0} SOL, need ${req.amount_sol} SOL`);
-  }
-
-  const existingPositionSnapshot = await db.collection('positions')
-    .where('user_id', '==', userId)
+  // Pre-query: find existing open position for this token (queries can't run inside txn)
+  const existingPosSnapshot = await positionsCol
     .where('token_address', '==', req.token_address)
     .where('status', '==', 'open')
     .limit(1)
     .get();
 
-  let position: any;
-  if (!existingPositionSnapshot.empty) {
-    const doc = existingPositionSnapshot.docs[0];
-    const data = doc.data();
-    const newTotalSol = (data.amount_sol ?? 0) + req.amount_sol;
-    const newTotalTokens = (data.tokens_bought ?? 0) + tokensReceived;
-    const newRemaining = (data.tokens_remaining ?? 0) + tokensReceived;
-    const avgEntryPrice = newTotalSol / newTotalTokens;
+  const existingPosRef = !existingPosSnapshot.empty ? existingPosSnapshot.docs[0].ref : null;
 
-    const updatedData = {
-      amount_sol: newTotalSol,
-      tokens_bought: newTotalTokens,
-      tokens_remaining: newRemaining,
-      entry_price: avgEntryPrice,
-      current_price: marketPriceSol,
-      current_value: newRemaining * marketPriceSol,
-      pnl_sol: (newRemaining * marketPriceSol) - newTotalSol,
-      pnl_percent: newTotalSol > 0 ? (((newRemaining * marketPriceSol) - newTotalSol) / newTotalSol) * 100 : 0,
-    };
+  const result = await db.runTransaction(async (txn) => {
+    // Re-read inside transaction for consistency
+    const userSnapshot = await txn.get(userDocRef);
+    const userData = userSnapshot.data();
 
-    await doc.ref.update(updatedData);
-    position = { id: doc.id, ...data, ...updatedData };
-  } else {
-    const newPosData = {
+    if (!userSnapshot.exists || !userData || (userData.paper_balance ?? 0) < req.amount_sol) {
+      throw new Error(`Insufficient balance. Have ${userData?.paper_balance ?? 0} SOL, need ${req.amount_sol} SOL`);
+    }
+
+    let position: any;
+
+    if (existingPosRef) {
+      const existingPosSnap = await txn.get(existingPosRef);
+      const data = existingPosSnap.data()!;
+      const newTotalSol = (data.amount_sol ?? 0) + req.amount_sol;
+      const newTotalTokens = (data.tokens_bought ?? 0) + tokensReceived;
+      const newRemaining = (data.tokens_remaining ?? 0) + tokensReceived;
+      const avgEntryPrice = newTotalSol / newTotalTokens;
+
+      const updatedData = {
+        amount_sol: newTotalSol,
+        tokens_bought: newTotalTokens,
+        tokens_remaining: newRemaining,
+        entry_price: avgEntryPrice,
+        current_price: marketPriceSol,
+        current_value: newRemaining * marketPriceSol,
+        pnl_sol: (newRemaining * marketPriceSol) - newTotalSol,
+        pnl_percent: newTotalSol > 0 ? (((newRemaining * marketPriceSol) - newTotalSol) / newTotalSol) * 100 : 0,
+      };
+
+      txn.update(existingPosRef, updatedData);
+      position = { id: existingPosSnap.id, ...data, ...updatedData };
+    } else {
+      const newPosRef = positionsCol.doc();
+      const newPosData = {
+        user_id: userId,
+        token_address: req.token_address,
+        token_symbol: tokenMeta.symbol ?? '???',
+        token_name: tokenMeta.name ?? 'Unknown',
+        token_image: tokenMeta.image ?? null,
+        entry_price: executionPrice,
+        amount_sol: req.amount_sol,
+        tokens_bought: tokensReceived,
+        tokens_remaining: tokensReceived,
+        current_price: marketPriceSol,
+        current_value: tokensReceived * marketPriceSol,
+        pnl_sol: 0,
+        pnl_percent: 0,
+        is_moon_bag: false,
+        is_rugged: false,
+        status: 'open',
+        created_at: new Date().toISOString(),
+        closed_at: null,
+      };
+      txn.set(newPosRef, newPosData);
+      position = { id: newPosRef.id, ...newPosData };
+    }
+
+    // Create trade record
+    const newTradeRef = tradesCol.doc();
+    const tradeData = {
       user_id: userId,
-      token_address: req.token_address,
-      token_symbol: tokenMeta.symbol ?? '???',
-      token_name: tokenMeta.name ?? 'Unknown',
-      token_image: tokenMeta.image ?? null,
-      entry_price: executionPrice,
+      position_id: position.id,
+      trade_type: 'buy',
       amount_sol: req.amount_sol,
-      tokens_bought: tokensReceived,
-      tokens_remaining: tokensReceived,
-      current_price: marketPriceSol,
-      current_value: tokensReceived * marketPriceSol,
-      pnl_sol: 0,
-      pnl_percent: 0,
-      is_moon_bag: false,
-      is_rugged: false,
-      status: 'open',
+      amount_tokens: tokensReceived,
+      execution_price: executionPrice,
+      market_price: marketPriceSol,
+      slippage_applied: effectiveSlippage,
+      fee_applied: fees,
       created_at: new Date().toISOString(),
-      closed_at: null,
     };
-    const newPosRef = await db.collection('positions').add(newPosData);
-    position = { id: newPosRef.id, ...newPosData };
-  }
+    txn.set(newTradeRef, tradeData);
 
-  const tradeData = {
-    user_id: userId,
-    position_id: position.id,
-    trade_type: 'buy',
-    amount_sol: req.amount_sol,
-    amount_tokens: tokensReceived,
-    execution_price: executionPrice,
-    market_price: marketPriceSol,
-    slippage_applied: effectiveSlippage,
-    fee_applied: fees,
-    created_at: new Date().toISOString(),
-  };
+    // Deduct balance
+    txn.update(userDocRef, {
+      paper_balance: (userData.paper_balance ?? 0) - req.amount_sol,
+    });
 
-  const tradeRef = await db.collection('trades').add(tradeData);
-  const trade = { id: tradeRef.id, ...tradeData };
-
-  await userDocRef.update({
-    paper_balance: (userData.paper_balance ?? 0) - req.amount_sol,
+    return { position, trade: { id: newTradeRef.id, ...tradeData } };
   });
 
-  return { position, trade };
+  return { position: result.position, trade: result.trade };
 }
 
 // ─── Execute Sell ───────────────────────────────────────
@@ -284,70 +305,85 @@ export async function executeSell(userId: string, req: SellRequest): Promise<{
     return { position, trade, solReceived };
   }
 
-  // Real Firebase Mode
-  const positionDocRef = db.collection('positions').doc(req.position_id);
-  const positionSnapshot = await positionDocRef.get();
-  const position = positionSnapshot.data();
+  // ─── Real Firebase Mode (Atomic Transaction) ─────────
+  const positionsCol = userPositionsCol(userId);
+  const positionDocRef = positionsCol.doc(req.position_id);
 
-  if (!positionSnapshot.exists || !position || position.user_id !== userId || position.status !== 'open') {
-    throw new Error('Position not found or already closed');
-  }
-  if (position.is_rugged) throw new Error('Cannot sell rugged token');
+  // Pre-fetch price data outside the transaction (external API call)
+  const positionPreSnap = await positionDocRef.get();
+  if (!positionPreSnap.exists) throw new Error('Position not found');
+  const preData = positionPreSnap.data()!;
+  if (preData.is_rugged) throw new Error('Cannot sell rugged token');
 
-  const tokensRemaining = position.tokens_remaining ?? 0;
-  const tokensToSell = tokensRemaining * (req.percentage / 100);
-  const priceData = await getTokenPrice(position.token_address);
+  const priceData = await getTokenPrice(preData.token_address);
   const marketPriceSol = priceData.priceSol;
-  const tradeAmountUsd = tokensToSell * priceData.priceUsd;
-  const slippage = calculateSlippage(tradeAmountUsd, priceData.liquidityUsd);
-  const solReceived = calculateSolReceived(tokensToSell, marketPriceSol, slippage);
-  const fees = calculateFees();
-  const executionPrice = solReceived / tokensToSell;
-  const newRemaining = tokensRemaining - tokensToSell;
-  const isClosed = newRemaining <= 0.000001;
-  const sellFraction = tokensToSell / tokensRemaining;
-  const costBasisReduction = (position.amount_sol ?? 0) * sellFraction;
-  const newAmountSol = isClosed ? 0 : (position.amount_sol ?? 0) - costBasisReduction;
 
-  const updatedPosData = {
-    tokens_remaining: isClosed ? 0 : newRemaining,
-    amount_sol: newAmountSol,
-    current_price: marketPriceSol,
-    current_value: isClosed ? 0 : newRemaining * marketPriceSol,
-    pnl_sol: isClosed ? 0 : (newRemaining * marketPriceSol) - newAmountSol,
-    pnl_percent: isClosed || newAmountSol <= 0 ? 0 : (((newRemaining * marketPriceSol) - newAmountSol) / newAmountSol) * 100,
-    status: isClosed ? 'closed' : 'open',
-    closed_at: isClosed ? new Date().toISOString() : null,
-  };
+  const result = await db.runTransaction(async (txn) => {
+    const positionSnapshot = await txn.get(positionDocRef);
+    const position = positionSnapshot.data();
 
-  await positionDocRef.update(updatedPosData);
-  const updatedPosition = { id: positionSnapshot.id, ...position, ...updatedPosData };
+    if (!positionSnapshot.exists || !position || position.user_id !== userId || position.status !== 'open') {
+      throw new Error('Position not found or already closed');
+    }
 
-  const tradeData = {
-    user_id: userId,
-    position_id: req.position_id,
-    trade_type: 'sell',
-    amount_sol: solReceived,
-    amount_tokens: tokensToSell,
-    execution_price: executionPrice,
-    market_price: marketPriceSol,
-    slippage_applied: slippage,
-    fee_applied: fees,
-    created_at: new Date().toISOString(),
-  };
+    const tokensRemaining = position.tokens_remaining ?? 0;
+    const tokensToSell = tokensRemaining * (req.percentage / 100);
+    const tradeAmountUsd = tokensToSell * priceData.priceUsd;
+    const slippage = calculateSlippage(tradeAmountUsd, priceData.liquidityUsd);
+    const solReceived = calculateSolReceived(tokensToSell, marketPriceSol, slippage);
+    const fees = calculateFees();
+    const executionPrice = solReceived / tokensToSell;
+    const newRemaining = tokensRemaining - tokensToSell;
+    const isClosed = newRemaining <= 0.000001;
+    const sellFraction = tokensToSell / tokensRemaining;
+    const costBasisReduction = (position.amount_sol ?? 0) * sellFraction;
+    const newAmountSol = isClosed ? 0 : (position.amount_sol ?? 0) - costBasisReduction;
 
-  const tradeRef = await db.collection('trades').add(tradeData);
-  const trade = { id: tradeRef.id, ...tradeData };
+    const updatedPosData = {
+      tokens_remaining: isClosed ? 0 : newRemaining,
+      amount_sol: newAmountSol,
+      current_price: marketPriceSol,
+      current_value: isClosed ? 0 : newRemaining * marketPriceSol,
+      pnl_sol: isClosed ? 0 : (newRemaining * marketPriceSol) - newAmountSol,
+      pnl_percent: isClosed || newAmountSol <= 0 ? 0 : (((newRemaining * marketPriceSol) - newAmountSol) / newAmountSol) * 100,
+      status: isClosed ? 'closed' : 'open',
+      closed_at: isClosed ? new Date().toISOString() : null,
+    };
 
-  const userDocRef = db.collection('users').doc(userId);
-  const userSnapshot = await userDocRef.get();
-  const userData = userSnapshot.data();
+    txn.update(positionDocRef, updatedPosData);
 
-  await userDocRef.update({
-    paper_balance: (userData?.paper_balance ?? 0) + solReceived,
+    // Create trade record
+    const newTradeRef = userTradesCol(userId).doc();
+    const tradeData = {
+      user_id: userId,
+      position_id: req.position_id,
+      trade_type: 'sell',
+      amount_sol: solReceived,
+      amount_tokens: tokensToSell,
+      execution_price: executionPrice,
+      market_price: marketPriceSol,
+      slippage_applied: slippage,
+      fee_applied: fees,
+      created_at: new Date().toISOString(),
+    };
+    txn.set(newTradeRef, tradeData);
+
+    // Credit balance
+    const userDocRef = db.collection('users').doc(userId);
+    const userSnapshot = await txn.get(userDocRef);
+    const userData = userSnapshot.data();
+    txn.update(userDocRef, {
+      paper_balance: (userData?.paper_balance ?? 0) + solReceived,
+    });
+
+    return {
+      position: { id: positionSnapshot.id, ...position, ...updatedPosData },
+      trade: { id: newTradeRef.id, ...tradeData },
+      solReceived,
+    };
   });
 
-  return { position: updatedPosition, trade, solReceived };
+  return result;
 }
 
 // ─── Execute Sell Init (Moon Bag) ───────────────────────
@@ -392,67 +428,83 @@ export async function executeSellInit(userId: string, req: SellInitRequest): Pro
     return { position, trade, solReceived, moonBagTokens };
   }
 
-  // Real Firebase mode
-  const positionDocRef = db.collection('positions').doc(req.position_id);
-  const positionSnapshot = await positionDocRef.get();
-  const position = positionSnapshot.data();
+  // ─── Real Firebase Mode (Atomic Transaction) ─────────
+  const positionsCol = userPositionsCol(userId);
+  const positionDocRef = positionsCol.doc(req.position_id);
 
-  if (!positionSnapshot.exists || !position || position.user_id !== userId || position.status !== 'open') {
-    throw new Error('Position not found');
-  }
-  if (position.is_rugged) throw new Error('Cannot sell rugged token');
+  // Pre-fetch price data outside the transaction
+  const posPreSnap = await positionDocRef.get();
+  if (!posPreSnap.exists) throw new Error('Position not found');
+  const preData = posPreSnap.data()!;
+  if (preData.is_rugged) throw new Error('Cannot sell rugged token');
 
-  const priceData = await getTokenPrice(position.token_address);
+  const priceData = await getTokenPrice(preData.token_address);
   const marketPriceSol = priceData.priceSol;
-  const originalAmountSol = parseFloat(String(position.amount_sol));
-  const tradeAmountUsd = originalAmountSol * (priceData.priceUsd / priceData.priceSol);
-  const slippage = calculateSlippage(tradeAmountUsd, priceData.liquidityUsd);
-  const tokensToSell = calculateSellInitTokens(originalAmountSol, marketPriceSol, slippage);
-  const tokensRemaining = parseFloat(String(position.tokens_remaining));
-  const actualTokensToSell = Math.min(tokensToSell, tokensRemaining);
-  const moonBagTokens = tokensRemaining - actualTokensToSell;
-  if (moonBagTokens <= 0) throw new Error('Token hasn\'t pumped enough for sell-init');
 
-  const solReceived = calculateSolReceived(actualTokensToSell, marketPriceSol, slippage);
-  const fees = calculateFees();
-  const executionPrice = solReceived / actualTokensToSell;
+  const result = await db.runTransaction(async (txn) => {
+    const positionSnapshot = await txn.get(positionDocRef);
+    const position = positionSnapshot.data();
 
-  const updatedData = {
-    tokens_remaining: moonBagTokens,
-    is_moon_bag: true,
-    amount_sol: 0, // Capital fully recovered — moon bag is free
-    current_price: marketPriceSol,
-    current_value: moonBagTokens * marketPriceSol,
-    pnl_sol: moonBagTokens * marketPriceSol, // Entire value is profit
-    pnl_percent: 999, // Infinite return (0 cost basis)
-  };
+    if (!positionSnapshot.exists || !position || position.user_id !== userId || position.status !== 'open') {
+      throw new Error('Position not found');
+    }
 
-  await positionDocRef.update(updatedData);
-  const updatedPosition = { id: positionSnapshot.id, ...position, ...updatedData };
+    const originalAmountSol = parseFloat(String(position.amount_sol));
+    const tradeAmountUsd = originalAmountSol * (priceData.priceUsd / priceData.priceSol);
+    const slippage = calculateSlippage(tradeAmountUsd, priceData.liquidityUsd);
+    const tokensToSell = calculateSellInitTokens(originalAmountSol, marketPriceSol, slippage);
+    const tokensRemaining = parseFloat(String(position.tokens_remaining));
+    const actualTokensToSell = Math.min(tokensToSell, tokensRemaining);
+    const moonBagTokens = tokensRemaining - actualTokensToSell;
+    if (moonBagTokens <= 0) throw new Error('Token hasn\'t pumped enough for sell-init');
 
-  const tradeData = {
-    user_id: userId,
-    position_id: req.position_id,
-    trade_type: 'sell_init',
-    amount_sol: solReceived,
-    amount_tokens: actualTokensToSell,
-    execution_price: executionPrice,
-    market_price: marketPriceSol,
-    slippage_applied: slippage,
-    fee_applied: fees,
-    created_at: new Date().toISOString(),
-  };
+    const solReceived = calculateSolReceived(actualTokensToSell, marketPriceSol, slippage);
+    const fees = calculateFees();
+    const executionPrice = solReceived / actualTokensToSell;
 
-  const tradeRef = await db.collection('trades').add(tradeData);
-  const trade = { id: tradeRef.id, ...tradeData };
+    const updatedData = {
+      tokens_remaining: moonBagTokens,
+      is_moon_bag: true,
+      amount_sol: 0, // Capital fully recovered — moon bag is free
+      current_price: marketPriceSol,
+      current_value: moonBagTokens * marketPriceSol,
+      pnl_sol: moonBagTokens * marketPriceSol, // Entire value is profit
+      pnl_percent: 999, // Infinite return (0 cost basis)
+    };
 
-  const userDocRef = db.collection('users').doc(userId);
-  const userSnap = await userDocRef.get();
-  const userData = userSnap.data();
+    txn.update(positionDocRef, updatedData);
 
-  await userDocRef.update({ paper_balance: (userData?.paper_balance ?? 0) + solReceived });
+    // Create trade record
+    const newTradeRef = userTradesCol(userId).doc();
+    const tradeData = {
+      user_id: userId,
+      position_id: req.position_id,
+      trade_type: 'sell_init',
+      amount_sol: solReceived,
+      amount_tokens: actualTokensToSell,
+      execution_price: executionPrice,
+      market_price: marketPriceSol,
+      slippage_applied: slippage,
+      fee_applied: fees,
+      created_at: new Date().toISOString(),
+    };
+    txn.set(newTradeRef, tradeData);
 
-  return { position: updatedPosition, trade, solReceived, moonBagTokens };
+    // Credit balance
+    const userDocRef = db.collection('users').doc(userId);
+    const userSnap = await txn.get(userDocRef);
+    const userData = userSnap.data();
+    txn.update(userDocRef, { paper_balance: (userData?.paper_balance ?? 0) + solReceived });
+
+    return {
+      position: { id: positionSnapshot.id, ...position, ...updatedData },
+      trade: { id: newTradeRef.id, ...tradeData },
+      solReceived,
+      moonBagTokens,
+    };
+  });
+
+  return result;
 }
 
 // ─── Get User Positions ─────────────────────────────────
@@ -463,8 +515,7 @@ export async function getUserPositions(userId: string, status?: string): Promise
     return positions;
   }
 
-  let q = db.collection('positions')
-    .where('user_id', '==', userId)
+  let q: FirebaseFirestore.Query = userPositionsCol(userId)
     .orderBy('created_at', 'desc');
 
   if (status) {
@@ -476,10 +527,10 @@ export async function getUserPositions(userId: string, status?: string): Promise
 }
 
 // ─── Update Position Prices ─────────────────────────────
-export async function updatePositionPrice(positionId: string, currentPriceSol: number) {
+export async function updatePositionPrice(userId: string, positionId: string, currentPriceSol: number) {
   if (isMockMode) return;
 
-  const docRef = db.collection('positions').doc(positionId);
+  const docRef = userPositionsCol(userId).doc(positionId);
   const snapshot = await docRef.get();
   const position = snapshot.data();
 
@@ -508,12 +559,10 @@ export async function getUserTrades(userId: string): Promise<any[]> {
     );
   }
 
-  const snapshot = await db.collection('trades')
-    .where('user_id', '==', userId)
+  const snapshot = await userTradesCol(userId)
     .orderBy('created_at', 'desc')
     .limit(100)
     .get();
 
   return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 }
-

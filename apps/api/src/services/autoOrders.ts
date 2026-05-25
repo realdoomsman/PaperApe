@@ -1,160 +1,204 @@
-/**
- * Auto Orders — Take Profit / Stop Loss engine
- * Monitors positions against configured triggers and auto-sells when hit.
- */
-import { getTokenPrice } from './birdeye.js';
+import type { Position } from '@paperape/shared';
+import { db, isMockMode } from '../lib/firebase.js';
 import { executeSell } from './tradeEngine.js';
 
-// ─── Types ──────────────────────────────────────────────
+// ─── In-Memory Store (Mock Mode) ────────────────────────
+const autoOrders: Map<string, AutoOrder> = new Map();
+let tickInterval: ReturnType<typeof setInterval> | null = null;
+const AUTO_ORDER_TICK_MS = 5_000; // Check every 5 seconds
+
 export interface AutoOrder {
   id: string;
   user_id: string;
   position_id: string;
   token_address: string;
   type: 'tp' | 'sl' | 'trailing_sl';
-  trigger_percent: number;   // +100 for TP, -25 for SL
-  sell_percent: number;      // what % of position to sell when triggered (default 100)
-  entry_price: number;       // price at time of order creation (SOL)
-  highest_price?: number;    // for trailing SL — tracks the high
+  trigger_percent: number;
+  sell_percent: number;
+  entry_price: number;
+  highest_price?: number; // for trailing SL
   status: 'active' | 'triggered' | 'cancelled';
   created_at: string;
   triggered_at?: string;
 }
 
-// ─── In-Memory Store (mock mode) ────────────────────────
-const autoOrders = new Map<string, AutoOrder>(); // orderId -> order
-let orderIdCounter = 0;
-let tickerInterval: ReturnType<typeof setInterval> | null = null;
-
-// Callbacks for when orders trigger (broadcasts via WebSocket)
-type TriggerCallback = (order: AutoOrder, result: any) => void;
-let onTriggerCallback: TriggerCallback | null = null;
-
-export function setOnTriggerCallback(cb: TriggerCallback) {
-  onTriggerCallback = cb;
+// ─── Firestore Helpers ──────────────────────────────────
+function userAutoOrdersCol(userId: string) {
+  return db.collection('users').doc(userId).collection('auto_orders');
 }
 
-// ─── Create Order ───────────────────────────────────────
-export function createAutoOrder(params: {
+// ─── Create Auto Order ─────────────────────────────────
+export async function createAutoOrder(params: {
   user_id: string;
   position_id: string;
   token_address: string;
   type: 'tp' | 'sl' | 'trailing_sl';
   trigger_percent: number;
-  sell_percent?: number;
+  sell_percent: number;
   entry_price: number;
-}): AutoOrder {
-  const id = `ao-${++orderIdCounter}`;
+}): Promise<AutoOrder> {
   const order: AutoOrder = {
-    id,
-    user_id: params.user_id,
-    position_id: params.position_id,
-    token_address: params.token_address,
-    type: params.type,
-    trigger_percent: params.trigger_percent,
-    sell_percent: params.sell_percent ?? 100,
-    entry_price: params.entry_price,
-    highest_price: params.type === 'trailing_sl' ? params.entry_price : undefined,
+    id: '',
+    ...params,
     status: 'active',
     created_at: new Date().toISOString(),
+    highest_price: params.type === 'trailing_sl' ? params.entry_price : undefined,
   };
-  autoOrders.set(id, order);
-  console.log(`📌 Auto order created: ${order.type} @ ${order.trigger_percent}% for position ${order.position_id}`);
+
+  if (isMockMode) {
+    order.id = `ao-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    autoOrders.set(order.id, order);
+    return order;
+  }
+
+  const docRef = userAutoOrdersCol(params.user_id).doc();
+  order.id = docRef.id;
+  await docRef.set(order);
   return order;
 }
 
 // ─── Get Orders ─────────────────────────────────────────
-export function getOrdersForPosition(positionId: string): AutoOrder[] {
-  return [...autoOrders.values()].filter(o => o.position_id === positionId && o.status === 'active');
+export async function getOrdersForPosition(positionId: string, userId?: string): Promise<AutoOrder[]> {
+  if (isMockMode) {
+    return [...autoOrders.values()].filter(o => o.position_id === positionId && o.status === 'active');
+  }
+
+  if (!userId) return [];
+  const snap = await userAutoOrdersCol(userId)
+    .where('position_id', '==', positionId)
+    .where('status', '==', 'active')
+    .get();
+  return snap.docs.map(d => ({ id: d.id, ...d.data() as any }));
 }
 
-export function getUserActiveOrders(userId: string): AutoOrder[] {
-  return [...autoOrders.values()].filter(o => o.user_id === userId && o.status === 'active');
+export async function getUserActiveOrders(userId: string): Promise<AutoOrder[]> {
+  if (isMockMode) {
+    return [...autoOrders.values()].filter(o => o.user_id === userId && o.status === 'active');
+  }
+
+  const snap = await userAutoOrdersCol(userId)
+    .where('status', '==', 'active')
+    .get();
+  return snap.docs.map(d => ({ id: d.id, ...d.data() as any }));
 }
 
-// ─── Cancel Order ───────────────────────────────────────
-export function cancelAutoOrder(orderId: string, userId: string): boolean {
-  const order = autoOrders.get(orderId);
-  if (!order || order.user_id !== userId) return false;
-  order.status = 'cancelled';
-  console.log(`❌ Auto order cancelled: ${orderId}`);
+// ─── Cancel Auto Order ──────────────────────────────────
+export async function cancelAutoOrder(orderId: string, userId: string): Promise<boolean> {
+  if (isMockMode) {
+    const order = autoOrders.get(orderId);
+    if (!order || order.user_id !== userId) return false;
+    order.status = 'cancelled';
+    return true;
+  }
+
+  const docRef = userAutoOrdersCol(userId).doc(orderId);
+  const snap = await docRef.get();
+  if (!snap.exists) return false;
+  await docRef.update({ status: 'cancelled' });
   return true;
 }
 
-// ─── Ticker Loop ────────────────────────────────────────
-// Runs every 5s, checks all active orders against live prices
+// ─── Auto Order Ticker ──────────────────────────────────
 export function startAutoOrderTicker() {
-  if (tickerInterval) return;
-  console.log('📌 Auto-order ticker started (5s interval)');
+  console.log(`🤖 Auto-order ticker started (${isMockMode ? 'mock' : 'production'} mode, ${AUTO_ORDER_TICK_MS / 1000}s interval)`);
 
-  tickerInterval = setInterval(async () => {
-    const activeOrders = [...autoOrders.values()].filter(o => o.status === 'active');
-    if (activeOrders.length === 0) return;
+  tickInterval = setInterval(async () => {
+    try {
+      let activeOrders: AutoOrder[] = [];
 
-    // Group by token to reduce API calls
-    const tokenGroups = new Map<string, AutoOrder[]>();
-    for (const order of activeOrders) {
-      const existing = tokenGroups.get(order.token_address) || [];
-      existing.push(order);
-      tokenGroups.set(order.token_address, existing);
-    }
+      if (isMockMode) {
+        activeOrders = [...autoOrders.values()].filter(o => o.status === 'active');
+      } else {
+        // Query all active auto-orders across all users
+        const snap = await db.collectionGroup('auto_orders')
+          .where('status', '==', 'active')
+          .get();
+        activeOrders = snap.docs.map(d => ({
+          id: d.id,
+          _ref: d.ref,
+          _userId: d.ref.parent.parent!.id,
+          ...d.data() as any,
+        }));
+      }
 
-    for (const [tokenAddress, orders] of tokenGroups) {
-      try {
-        const priceData = await getTokenPrice(tokenAddress);
-        const currentPrice = priceData.priceSol;
+      if (activeOrders.length === 0) return;
 
-        for (const order of orders) {
-          const priceChange = ((currentPrice - order.entry_price) / order.entry_price) * 100;
+      // Get unique tokens and their current prices
+      const uniqueTokens = [...new Set(activeOrders.map(o => o.token_address))];
+      const { getTokenPrice } = await import('./birdeye.js');
+      const prices: Record<string, number> = {};
 
-          // Update trailing SL highest price
-          if (order.type === 'trailing_sl' && currentPrice > (order.highest_price || 0)) {
-            order.highest_price = currentPrice;
-          }
+      for (const addr of uniqueTokens) {
+        try {
+          const p = await getTokenPrice(addr);
+          prices[addr] = p.priceSol;
+        } catch { /* skip */ }
+      }
 
-          let shouldTrigger = false;
+      // Check each order
+      for (const order of activeOrders) {
+        const currentPrice = prices[order.token_address];
+        if (!currentPrice || !order.entry_price) continue;
 
-          if (order.type === 'tp' && priceChange >= order.trigger_percent) {
-            shouldTrigger = true;
-          } else if (order.type === 'sl' && priceChange <= order.trigger_percent) {
-            shouldTrigger = true;
-          } else if (order.type === 'trailing_sl') {
-            const dropFromHigh = ((currentPrice - (order.highest_price || order.entry_price)) / (order.highest_price || order.entry_price)) * 100;
-            if (dropFromHigh <= order.trigger_percent) {
-              shouldTrigger = true;
+        const pnlPercent = ((currentPrice - order.entry_price) / order.entry_price) * 100;
+
+        let shouldTrigger = false;
+
+        if (order.type === 'tp' && pnlPercent >= order.trigger_percent) {
+          shouldTrigger = true;
+        } else if (order.type === 'sl' && pnlPercent <= -Math.abs(order.trigger_percent)) {
+          shouldTrigger = true;
+        } else if (order.type === 'trailing_sl') {
+          const highest = Math.max(order.highest_price ?? order.entry_price, currentPrice);
+          const drawdown = ((highest - currentPrice) / highest) * 100;
+
+          // Update highest price
+          if (currentPrice > (order.highest_price ?? 0)) {
+            if (isMockMode) {
+              order.highest_price = currentPrice;
+            } else {
+              await (order as any)._ref.update({ highest_price: currentPrice });
             }
           }
 
-          if (shouldTrigger) {
-            console.log(`🔔 Auto order TRIGGERED: ${order.type} @ ${order.trigger_percent}% (current: ${priceChange.toFixed(1)}%)`);
-            order.status = 'triggered';
-            order.triggered_at = new Date().toISOString();
-
-            try {
-              const result = await executeSell(order.user_id, {
-                position_id: order.position_id,
-                percentage: order.sell_percent,
-              });
-              if (onTriggerCallback) {
-                onTriggerCallback(order, result);
-              }
-            } catch (err) {
-              console.error(`Auto-sell failed for order ${order.id}:`, err);
-              order.status = 'active'; // Re-activate on failure
-            }
+          if (drawdown >= Math.abs(order.trigger_percent)) {
+            shouldTrigger = true;
           }
         }
-      } catch (err) {
-        // Price fetch failed — skip this cycle
+
+        if (shouldTrigger) {
+          const userId = (order as any)._userId ?? order.user_id;
+          console.log(`🔔 Auto-order triggered: ${order.type} for position ${order.position_id} (PnL: ${pnlPercent.toFixed(1)}%)`);
+
+          try {
+            await executeSell(userId, {
+              position_id: order.position_id,
+              percentage: order.sell_percent,
+            });
+
+            if (isMockMode) {
+              order.status = 'triggered';
+              order.triggered_at = new Date().toISOString();
+            } else {
+              await (order as any)._ref.update({
+                status: 'triggered',
+                triggered_at: new Date().toISOString(),
+              });
+            }
+          } catch (err: any) {
+            console.error(`Auto-order execution failed for ${order.id}:`, err.message);
+          }
+        }
       }
+    } catch (err) {
+      console.error('Auto-order ticker error:', err);
     }
-  }, 5_000);
+  }, AUTO_ORDER_TICK_MS);
 }
 
 export function stopAutoOrderTicker() {
-  if (tickerInterval) {
-    clearInterval(tickerInterval);
-    tickerInterval = null;
-    console.log('📌 Auto-order ticker stopped');
+  if (tickInterval) {
+    clearInterval(tickInterval);
+    tickInterval = null;
   }
 }

@@ -1,93 +1,146 @@
 import { Router } from 'express';
-import { authenticateRequest } from '../services/privy.js';
-import { isMockMode } from '../lib/firebase.js';
+import { authenticateRequest } from '../services/auth.js';
+import { db, isMockMode } from '../lib/firebase.js';
 
 export const alertsRouter = Router();
 
-// Auth middleware
+// ─── In-Memory Store (Mock Mode) ────────────────────────
+const mockAlerts: Map<string, Alert[]> = new Map();
+
+interface Alert {
+  id: string;
+  user_id: string;
+  token_address: string;
+  token_symbol: string;
+  condition: 'above' | 'below';
+  target_price: number;
+  note?: string;
+  status: 'active' | 'triggered' | 'cancelled';
+  created_at: string;
+  triggered_at?: string;
+}
+
+// ─── Firestore Helpers ──────────────────────────────────
+function userAlertsCol(userId: string) {
+  return db.collection('users').doc(userId).collection('alerts');
+}
+
+// ─── Auth Middleware ────────────────────────────────────
 async function requireAuth(req: any, res: any, next: any) {
   const user = await authenticateRequest(req.headers.authorization);
-  if (!user) return res.status(401).json({ success: false, error: 'Unauthorized' });
+  if (!user) {
+    return res.status(401).json({ success: false, error: 'Unauthorized' });
+  }
   req.user = user;
   next();
 }
+
 alertsRouter.use(requireAuth);
 
-// In-memory alert store (mock mode)
-interface Alert {
-  id: string;
-  userId: string;
-  tokenAddress: string;
-  tokenSymbol: string;
-  targetPrice: number;
-  direction: 'above' | 'below';
-  active: boolean;
-  createdAt: string;
-}
-
-const mockAlerts: Map<string, Alert[]> = new Map();
-
 /**
- * GET /alerts — get user's price alerts
+ * GET /alerts
+ * List user's active alerts.
  */
 alertsRouter.get('/', async (req: any, res) => {
   try {
     const userId = req.user.id;
-    const alerts = mockAlerts.get(userId) || [];
-    res.json({ success: true, data: { alerts: alerts.filter(a => a.active) } });
+
+    if (isMockMode) {
+      const alerts = mockAlerts.get(userId) ?? [];
+      return res.json({ success: true, data: { alerts: alerts.filter(a => a.status === 'active') } });
+    }
+
+    const snap = await userAlertsCol(userId)
+      .where('status', '==', 'active')
+      .get();
+    const alerts = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    return res.json({ success: true, data: { alerts } });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
 /**
- * POST /alerts — create a price alert
+ * POST /alerts
+ * Create a price alert.
  */
 alertsRouter.post('/', async (req: any, res) => {
   try {
     const userId = req.user.id;
-    const { tokenAddress, tokenSymbol, targetPrice, direction } = req.body;
+    const { token_address, token_symbol, condition, target_price, note } = req.body;
 
-    if (!tokenAddress || !targetPrice || !direction) {
-      return res.status(400).json({ success: false, error: 'Missing required fields' });
+    if (!token_address || !condition || !target_price) {
+      return res.status(400).json({ success: false, error: 'Missing token_address, condition, or target_price' });
+    }
+    if (!['above', 'below'].includes(condition)) {
+      return res.status(400).json({ success: false, error: 'condition must be "above" or "below"' });
     }
 
     const alert: Alert = {
-      id: `alert_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-      userId,
-      tokenAddress,
-      tokenSymbol: tokenSymbol || 'TOKEN',
-      targetPrice: parseFloat(targetPrice),
-      direction,
-      active: true,
-      createdAt: new Date().toISOString(),
+      id: '',
+      user_id: userId,
+      token_address,
+      token_symbol: token_symbol || '???',
+      condition,
+      target_price: parseFloat(target_price),
+      note: note || undefined,
+      status: 'active',
+      created_at: new Date().toISOString(),
     };
 
-    const userAlerts = mockAlerts.get(userId) || [];
-    if (userAlerts.filter(a => a.active).length >= 10) {
-      return res.status(400).json({ success: false, error: 'Maximum 10 active alerts' });
+    if (isMockMode) {
+      alert.id = `alert-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+      if (!mockAlerts.has(userId)) mockAlerts.set(userId, []);
+      const userAlerts = mockAlerts.get(userId)!;
+      if (userAlerts.filter(a => a.status === 'active').length >= 20) {
+        return res.status(400).json({ success: false, error: 'Max 20 active alerts' });
+      }
+      userAlerts.push(alert);
+      return res.json({ success: true, data: { alert } });
     }
-    userAlerts.push(alert);
-    mockAlerts.set(userId, userAlerts);
 
-    res.json({ success: true, data: { alert } });
+    // Firestore: cap at 20 active alerts
+    const countSnap = await userAlertsCol(userId)
+      .where('status', '==', 'active')
+      .get();
+    if (countSnap.size >= 20) {
+      return res.status(400).json({ success: false, error: 'Max 20 active alerts' });
+    }
+
+    const docRef = userAlertsCol(userId).doc();
+    alert.id = docRef.id;
+    await docRef.set(alert);
+    return res.json({ success: true, data: { alert } });
   } catch (err: any) {
-    res.status(500).json({ success: false, error: err.message });
+    res.status(400).json({ success: false, error: err.message });
   }
 });
 
 /**
- * DELETE /alerts/:id — delete a price alert
+ * DELETE /alerts/:id
+ * Cancel an alert.
  */
 alertsRouter.delete('/:id', async (req: any, res) => {
   try {
     const userId = req.user.id;
     const alertId = req.params.id;
-    const userAlerts = mockAlerts.get(userId) || [];
-    const alert = userAlerts.find(a => a.id === alertId);
-    if (!alert) return res.status(404).json({ success: false, error: 'Alert not found' });
-    alert.active = false;
-    res.json({ success: true });
+
+    if (isMockMode) {
+      const userAlerts = mockAlerts.get(userId);
+      if (!userAlerts) return res.status(404).json({ success: false, error: 'Alert not found' });
+      const alert = userAlerts.find(a => a.id === alertId);
+      if (!alert) return res.status(404).json({ success: false, error: 'Alert not found' });
+      alert.status = 'cancelled';
+      return res.json({ success: true });
+    }
+
+    const docRef = userAlertsCol(userId).doc(alertId);
+    const snap = await docRef.get();
+    if (!snap.exists) {
+      return res.status(404).json({ success: false, error: 'Alert not found' });
+    }
+    await docRef.update({ status: 'cancelled' });
+    return res.json({ success: true });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
   }

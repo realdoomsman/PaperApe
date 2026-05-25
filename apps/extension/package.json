@@ -1,18 +1,26 @@
 {
   "name": "@paperape/extension",
-  "version": "1.0.0",
+  "private": true,
+  "version": "2.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite build --watch",
-    "build": "vite build && sed -i '' 's|src=\"../popup/popup.js\"|src=\"./popup.js\"|g' dist/popup/popup.html && cp manifest.json dist/ && cp -r icons dist/",
-    "lint": "tsc --noEmit"
+    "dev": "vite build --watch --mode development",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
   },
   "dependencies": {
-    "@paperape/shared": "*"
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
   },
   "devDependencies": {
-    "@types/chrome": "^0.0.287",
+    "@types/chrome": "^0.0.306",
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "@vitejs/plugin-react": "^4.4.1",
+    "autoprefixer": "^10.4.21",
+    "postcss": "^8.5.3",
+    "tailwindcss": "^3.4.17",
     "typescript": "^5.7.0",
-    "vite": "^6.0.0"
+    "vite": "^6.3.5"
   }
 }

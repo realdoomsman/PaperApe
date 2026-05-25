@@ -97,4 +97,14 @@ server.listen(port, () => {
   console.log(`🔌 WebSocket server on ws://localhost:${port}/ws`);
 });
 
+// ─── Global Error Handlers ──────────────────────────────
+process.on('unhandledRejection', (err) => {
+  console.error('🚨 Unhandled promise rejection:', err);
+});
+
+process.on('uncaughtException', (err) => {
+  console.error('🚨 Uncaught exception:', err);
+  // Don't exit — keep the server running for paper trading
+});
+
 export { app, server };

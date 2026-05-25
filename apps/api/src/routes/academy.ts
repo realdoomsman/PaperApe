@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { authenticateRequest } from '../services/privy.js';
+import { authenticateRequest } from '../services/auth.js';
 import { db, isMockMode } from '../lib/firebase.js';
 
 export const academyRouter = Router();
@@ -50,7 +50,7 @@ academyRouter.post('/claim-reward', async (req, res) => {
       completed.add(lesson_id);
 
       // Add reward to balance
-      const { fundUser } = await import('../services/privy.js');
+      const { fundUser } = await import('../services/auth.js');
       const updated = await fundUser(user.id, reward);
 
       return res.json({

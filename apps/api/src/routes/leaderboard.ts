@@ -11,7 +11,8 @@ const LB_CACHE_TTL = 15_000; // 15s cache
 
 /**
  * Aggregate real leaderboard from Firestore.
- * Reads all users + their trades to compute rankings.
+ * Uses collectionGroup queries to fetch ALL positions and trades in 3 total queries
+ * (instead of 2N+1 queries from the old N+1 pattern).
  */
 async function aggregateLeaderboard(): Promise<any[]> {
   if (Date.now() - lbCacheTime < LB_CACHE_TTL && lbCache.length > 0) {
@@ -19,28 +20,37 @@ async function aggregateLeaderboard(): Promise<any[]> {
   }
 
   try {
-    // Get all users
-    const usersSnap = await db.collection('users').get();
+    // 3 queries total regardless of user count
+    const [usersSnap, allPositionsSnap, allTradesSnap] = await Promise.all([
+      db.collection('users').get(),
+      db.collectionGroup('positions').get(),
+      db.collectionGroup('trades').get(),
+    ]);
+
     if (usersSnap.empty) return [];
+
+    // Group positions by userId (extracted from subcollection path)
+    const positionsByUser = new Map<string, any[]>();
+    for (const doc of allPositionsSnap.docs) {
+      const userId = doc.ref.parent.parent!.id;
+      if (!positionsByUser.has(userId)) positionsByUser.set(userId, []);
+      positionsByUser.get(userId)!.push(doc.data());
+    }
+
+    // Count trades by userId
+    const tradeCountByUser = new Map<string, number>();
+    for (const doc of allTradesSnap.docs) {
+      const userId = doc.ref.parent.parent!.id;
+      tradeCountByUser.set(userId, (tradeCountByUser.get(userId) ?? 0) + 1);
+    }
 
     const entries: any[] = [];
 
     for (const userDoc of usersSnap.docs) {
       const userData = userDoc.data();
       const userId = userDoc.id;
-
-      // Get all positions for this user
-      const positionsSnap = await db.collection('positions')
-        .where('user_id', '==', userId)
-        .get();
-
-      // Get all trades for this user
-      const tradesSnap = await db.collection('trades')
-        .where('user_id', '==', userId)
-        .get();
-
-      const positions = positionsSnap.docs.map(d => d.data());
-      const totalTrades = tradesSnap.size;
+      const positions = positionsByUser.get(userId) ?? [];
+      const totalTrades = tradeCountByUser.get(userId) ?? 0;
 
       // Calculate total PnL across all positions
       let totalPnl = 0;
@@ -53,11 +63,6 @@ async function aggregateLeaderboard(): Promise<any[]> {
         if (pnl > 0) winCount++;
         else if (pnl < 0) lossCount++;
       }
-
-      // Include unrealized PnL from open positions
-      const unrealizedPnl = positions
-        .filter(p => p.status === 'open')
-        .reduce((sum, p) => sum + parseFloat(String(p.pnl_sol ?? 0)), 0);
 
       const finalPnl = totalPnl;
       const winRate = totalTrades > 0 ? (winCount / (winCount + lossCount)) * 100 : 0;

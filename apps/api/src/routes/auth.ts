@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { authenticateRequest, verifyFirebaseToken, upsertUser } from '../services/privy.js';
+import { authenticateRequest, verifyFirebaseToken, upsertUser } from '../services/auth.js';
 
 export const authRouter = Router();
 
@@ -80,7 +80,7 @@ authRouter.post('/fund', async (req, res) => {
       dailyFundTracker.set(user.id, { total: amount, resetAt: now + 24 * 60 * 60 * 1000 });
     }
 
-    const { fundUser } = await import('../services/privy.js');
+    const { fundUser } = await import('../services/auth.js');
     const updated = await fundUser(user.id, amount);
     res.json({ success: true, data: { user: updated, amount_added: amount } });
   } catch (err: any) {

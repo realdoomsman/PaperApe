@@ -27,13 +27,18 @@ export function startRugDetector() {
           }
         }
       } else {
-        // Production: query Firebase
-        const snapshot = await db.collection('positions')
+        // Production: query all positions across all users via collectionGroup
+        const snapshot = await db.collectionGroup('positions')
           .where('status', '==', 'open')
           .where('is_rugged', '==', false)
           .get();
         if (snapshot.empty) return;
-        openPositions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() as any }));
+        openPositions = snapshot.docs.map(doc => ({
+          id: doc.id,
+          _ref: doc.ref,
+          _userId: doc.ref.parent.parent!.id,
+          ...doc.data() as any,
+        }));
       }
 
       if (openPositions.length === 0) return;
@@ -48,7 +53,11 @@ export function startRugDetector() {
           // Update all positions for this token with current price
           const tokenPositions = openPositions.filter((p) => p.token_address === tokenAddress);
           for (const pos of tokenPositions) {
-            await updatePositionPrice(pos.id, priceData.priceSol);
+            if (isMockMode) {
+              // Mock mode: updatePositionPrice is a no-op, but we still update in-memory price below
+            } else {
+              await updatePositionPrice(pos._userId, pos.id, priceData.priceSol);
+            }
           }
 
           // Check if rugged (liquidity dropped below threshold)
@@ -68,8 +77,8 @@ export function startRugDetector() {
                 pos.current_price = 0;
                 pos.closed_at = new Date().toISOString();
               } else {
-                // Update Firebase
-                await db.collection('positions').doc(pos.id).update({
+                // Update via the subcollection doc ref
+                await pos._ref.update({
                   is_rugged: true,
                   status: 'rugged',
                   pnl_percent: -100,
@@ -80,7 +89,7 @@ export function startRugDetector() {
                 });
               }
 
-              console.log(`  ↳ Flagged position ${pos.id} for user ${pos.user_id}`);
+              console.log(`  ↳ Flagged position ${pos.id} for user ${pos._userId ?? pos.user_id}`);
             }
           }
         } catch (err) {

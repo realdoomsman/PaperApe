@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { authenticateRequest } from '../services/privy.js';
+import { authenticateRequest } from '../services/auth.js';
 import { executeBuy, executeSell, executeSellInit, getUserPositions } from '../services/tradeEngine.js';
 import { createAutoOrder, getOrdersForPosition, getUserActiveOrders, cancelAutoOrder } from '../services/autoOrders.js';
 import type { BuyRequest, SellRequest, SellInitRequest } from '@paperape/shared';
@@ -151,7 +151,7 @@ tradesRouter.post('/auto-orders', async (req, res) => {
     if (!['tp', 'sl', 'trailing_sl'].includes(type)) {
       return res.status(400).json({ success: false, error: 'Invalid order type' });
     }
-    const order = createAutoOrder({
+    const order = await createAutoOrder({
       user_id: req.user.id,
       position_id,
       token_address,
@@ -174,8 +174,8 @@ tradesRouter.get('/auto-orders', async (req, res) => {
   try {
     const positionId = req.query.position_id as string | undefined;
     const orders = positionId
-      ? getOrdersForPosition(positionId)
-      : getUserActiveOrders(req.user.id);
+      ? await getOrdersForPosition(positionId, req.user.id)
+      : await getUserActiveOrders(req.user.id);
     res.json({ success: true, data: { orders } });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
@@ -188,7 +188,7 @@ tradesRouter.get('/auto-orders', async (req, res) => {
  */
 tradesRouter.delete('/auto-orders/:id', async (req, res) => {
   try {
-    const success = cancelAutoOrder(req.params.id, req.user.id);
+    const success = await cancelAutoOrder(req.params.id, req.user.id);
     if (!success) return res.status(404).json({ success: false, error: 'Order not found' });
     res.json({ success: true });
   } catch (err: any) {

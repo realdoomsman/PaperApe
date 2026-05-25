@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>GMGN Tutorial</title>
+    <link rel="stylesheet" href="tutorial.css" />
+  </head>
+  <body>
+    <div class="tutorial-container">
+      <button class="restart-button" title="Restart Tutorial">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+          <path d="M3 3v5h5" />
+        </svg>
+      </button>
+      <div class="tutorial-content">
+        <img
+          src="assets/gmgn-logo.svg"
+          alt="GMGN Logo"
+          style="width: 120px; height: 32px; margin-bottom: 15px"
+        />
+        <h1 style="font-size: 16px">Get Started with GMGN</h1>
+        <div class="tutorial-step">
+          <div class="account-instructions">
+            <img
+              src="assets/gmgn-screenshot.png"
+              alt="GMGN Interface"
+              class="tutorial-image"
+            />
+            <a
+              href="https://gmgn.ai/r/Yo1nIM2K"
+              target="_blank"
+              class="hero-cta-button"
+              id="gmgnLink"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path
+                  d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"
+                />
+                <polyline points="15 3 21 3 21 9" />
+                <line x1="10" y1="14" x2="21" y2="3" />
+              </svg>
+              <span>Open GMGN & Get Started</span>
+            </a>
+            <div class="steps-container">
+              <h3>Follow these steps:</h3>
+              <ol class="steps-list">
+                <li>Click the button above to open GMGN</li>
+                <li>Connect your wallet to access the trading interface</li>
+                <li>Scroll down to to the start the tutorial</li>
+              </ol>
+            </div>
+          </div>
+          <div class="tutorial-choice-section">
+            <p class="tutorial-prompt">Ready to learn how to use MockApe?</p>
+            <button class="next-button tutorial-continue">
+              <span>Start Tutorial</span>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M5 12h14" />
+                <path d="M12 5l7 7-7 7" />
+              </svg>
+            </button>
+            <p class="skip-info">Tutorial is optional</p>
+          </div>
+        </div>
+      </div>
+    </div>
+    <script src="tutorial.js"></script>
+  </body>
+</html>

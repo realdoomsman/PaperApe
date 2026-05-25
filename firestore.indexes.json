@@ -2,52 +2,56 @@
   "indexes": [
     {
       "collectionGroup": "positions",
-      "queryScope": "COLLECTION",
+      "queryScope": "COLLECTION_GROUP",
       "fields": [
-        { "fieldPath": "user_id", "order": "ASCENDING" },
         { "fieldPath": "status", "order": "ASCENDING" },
         { "fieldPath": "created_at", "order": "DESCENDING" }
       ]
     },
     {
       "collectionGroup": "positions",
-      "queryScope": "COLLECTION",
+      "queryScope": "COLLECTION_GROUP",
       "fields": [
-        { "fieldPath": "user_id", "order": "ASCENDING" },
         { "fieldPath": "token_address", "order": "ASCENDING" },
         { "fieldPath": "status", "order": "ASCENDING" }
       ]
     },
     {
       "collectionGroup": "positions",
-      "queryScope": "COLLECTION",
+      "queryScope": "COLLECTION_GROUP",
       "fields": [
-        { "fieldPath": "user_id", "order": "ASCENDING" },
-        { "fieldPath": "created_at", "order": "DESCENDING" }
+        { "fieldPath": "is_rugged", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": [
+    {
+      "collectionGroup": "auto_orders",
+      "fieldPath": "status",
+      "ttl": false,
+      "indexes": [
+        { "order": "ASCENDING", "queryScope": "COLLECTION" },
+        { "order": "ASCENDING", "queryScope": "COLLECTION_GROUP" }
+      ]
+    },
+    {
+      "collectionGroup": "dca_orders",
+      "fieldPath": "status",
+      "ttl": false,
+      "indexes": [
+        { "order": "ASCENDING", "queryScope": "COLLECTION" },
+        { "order": "ASCENDING", "queryScope": "COLLECTION_GROUP" }
       ]
     },
     {
       "collectionGroup": "trades",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "user_id", "order": "ASCENDING" },
-        { "fieldPath": "created_at", "order": "DESCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "leaderboard_cache",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "weekly_pnl", "order": "DESCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "leaderboard_cache",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "monthly_pnl", "order": "DESCENDING" }
+      "fieldPath": "created_at",
+      "ttl": false,
+      "indexes": [
+        { "order": "DESCENDING", "queryScope": "COLLECTION" },
+        { "order": "DESCENDING", "queryScope": "COLLECTION_GROUP" }
       ]
     }
-  ],
-  "fieldOverrides": []
+  ]
 }

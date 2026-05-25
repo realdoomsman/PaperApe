@@ -12,8 +12,12 @@
     "test": "turbo run test"
   },
   "devDependencies": {
+    "firebase-tools": "^15.18.0",
     "turbo": "^2.4.0",
     "typescript": "^5.7.0"
   },
-  "packageManager": "npm@10.8.0"
+  "packageManager": "npm@10.8.0",
+  "dependencies": {
+    "@esbuild/darwin-arm64": "^0.28.0"
+  }
 }

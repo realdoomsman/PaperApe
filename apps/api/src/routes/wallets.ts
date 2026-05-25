@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { authenticateRequest } from '../services/privy.js';
+import { authenticateRequest } from '../services/auth.js';
 import { db, isMockMode } from '../lib/firebase.js';
 
 export const walletsRouter = Router();
@@ -304,7 +304,7 @@ walletsRouter.delete('/:id', async (req: any, res) => {
 walletsRouter.get('/tracked', async (req: any, res) => {
   try {
     const { getTrackedWallets } = await import('../services/walletTracker.js');
-    const wallets = getTrackedWallets(req.user.uid);
+    const wallets = await getTrackedWallets(req.user.id);
     res.json({ success: true, data: { wallets } });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
@@ -317,7 +317,7 @@ walletsRouter.post('/track', async (req: any, res) => {
     const { address, label } = req.body;
     if (!address || address.length < 32) return res.status(400).json({ success: false, error: 'Invalid wallet address' });
     const { addTrackedWallet } = await import('../services/walletTracker.js');
-    const wallet = addTrackedWallet(req.user.uid, address, label || '');
+    const wallet = await addTrackedWallet(req.user.id, address, label || '');
     res.json({ success: true, data: { wallet } });
   } catch (err: any) {
     res.status(400).json({ success: false, error: err.message });
@@ -328,7 +328,7 @@ walletsRouter.post('/track', async (req: any, res) => {
 walletsRouter.delete('/track/:address', async (req: any, res) => {
   try {
     const { removeTrackedWallet } = await import('../services/walletTracker.js');
-    const removed = removeTrackedWallet(req.user.uid, req.params.address);
+    const removed = await removeTrackedWallet(req.user.id, req.params.address);
     if (!removed) return res.status(404).json({ success: false, error: 'Wallet not found' });
     res.json({ success: true });
   } catch (err: any) {
