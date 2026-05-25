@@ -802,7 +802,14 @@ function TerminalInner() {
               <div style={{ height: 420, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--t3)', fontSize: 13 }}>Loading chart data...</div>
             ) : (
               <div style={{ height: 420 }}>
-                <PaperChart tokenAddress={effectiveAddress} pairAddress={liveData?.pairAddress} height={420} />
+                <PaperChart
+                  tokenAddress={effectiveAddress}
+                  pairAddress={liveData?.pairAddress}
+                  height={420}
+                  entryPrice={curPos?.entryPriceUsd}
+                  currentPrice={curPos?.currentPriceUsd || liveData?.priceUsd}
+                  positionSize={curPos?.amount}
+                />
               </div>
             )}
             <div style={{ display: 'flex', gap: 1, background: 'var(--border-1)', borderTop: '1px dashed var(--border-1)' }}>
