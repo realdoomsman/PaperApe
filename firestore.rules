@@ -16,11 +16,6 @@ service cloud.firestore {
       return isAuth() && request.auth.uid == userId;
     }
 
-    // Helper: Validate paper balance cannot be set > 10000 or < 0 via client
-    function validBalance() {
-      return request.resource.data.paper_balance >= 0
-          && request.resource.data.paper_balance <= 10000;
-    }
 
     // Helper: Ensure only allowed fields are written by client
     function onlyAllowedFields(allowed) {
