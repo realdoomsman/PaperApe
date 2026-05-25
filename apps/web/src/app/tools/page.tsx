@@ -74,7 +74,10 @@ export default function ToolsPage() {
 
   return (
     <AppShell>
-      <div className="ptop"><div><h1>Tools</h1><div className="ptop-desc">Trading calculators and risk analysis</div></div></div>
+      <div style={{ marginBottom: 20 }} className="an">
+        <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--t0)', letterSpacing: 1, textTransform: 'uppercase' }}>Tools</h1>
+        <div style={{ fontSize: 12, color: 'var(--t2)', marginTop: 4 }}>Trading calculators and risk analysis</div>
+      </div>
 
       <div className="tool-grid an">
         {/* Position Size Calculator */}
