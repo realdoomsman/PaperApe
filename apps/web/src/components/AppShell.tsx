@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useState, useEffect, useRef } from 'react';
 import { useMode } from '@/components/ModeContext';
 import { useAuth } from '@/components/AuthContext';
-import { IconLogo, IconChart, IconTarget, IconUsers, IconWallet, IconGraduationCap, IconActivity, IconTrophy, IconChevronRight } from '@/components/Icons';
+import { IconLogo, IconChart, IconTarget, IconUsers, IconWallet, IconGraduationCap, IconActivity, IconTrophy, IconChevronRight, IconExtension } from '@/components/Icons';
 import NotificationCenter from '@/components/NotificationCenter';
 
 interface AppShellProps { children: React.ReactNode; balance?: number; }
@@ -119,6 +119,12 @@ export default function AppShell({ children, balance }: AppShellProps) {
               </Link>
               <Link href="/calculator" className="nav-menu-item" onClick={() => setMenuOpen(false)}>
                 <IconActivity /> Position Calculator
+              </Link>
+              <Link href="/extension" className="nav-menu-item" onClick={() => setMenuOpen(false)}>
+                <IconExtension /> Chrome Extension
+              </Link>
+              <Link href="/tools" className="nav-menu-item" onClick={() => setMenuOpen(false)}>
+                <IconTarget /> Trading Tools
               </Link>
               <div className="nav-menu-sep" />
               <Link href="/settings" className="nav-menu-item" onClick={() => setMenuOpen(false)}>
