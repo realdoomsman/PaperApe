@@ -97,12 +97,16 @@ export default function DashboardPage() {
   }, [authToken]);
 
   // Fetch trending tokens from API (real data)
+  const [trendingError, setTrendingError] = useState(false);
   useEffect(() => {
     apiRequest('GET', '/tokens/trending').then(r => {
       if (r.success && r.data?.tokens) {
         setTrendingTokens(r.data.tokens.slice(0, 8));
+        setTrendingError(false);
+      } else {
+        setTrendingError(true);
       }
-    }).catch(() => {});
+    }).catch(() => setTrendingError(true));
   }, []);
 
   // Fetch academy progress
@@ -368,8 +372,29 @@ export default function DashboardPage() {
               <span className="card-title">Trending Tokens</span>
               <Link href="/discover" style={{ fontSize: 11, fontWeight: 600, color: 'var(--green)' }}>View All</Link>
             </div>
-            {trendingTokens.length === 0 ? (
-              <div style={{ padding: '40px 0', textAlign: 'center', color: 'var(--t3)', fontSize: 12 }}>Loading trending tokens...</div>
+            {trendingTokens.length === 0 && !trendingError ? (
+              <div style={{ padding: 12 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 8 }}>
+                  {[1,2,3,4,5,6].map(i => (
+                    <div key={i} style={{ padding: 14, background: 'var(--bg-2)', borderRadius: 12, border: '1px solid var(--border-0)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                        <div className="skeleton" style={{ width: 22, height: 22, borderRadius: '50%' }} />
+                        <div className="skeleton" style={{ width: 50, height: 14, borderRadius: 2 }} />
+                      </div>
+                      <div className="skeleton" style={{ width: 60, height: 16, borderRadius: 2, marginBottom: 4 }} />
+                      <div className="skeleton" style={{ width: 30, height: 10, borderRadius: 2, marginBottom: 6 }} />
+                      <div className="skeleton" style={{ width: 40, height: 12, borderRadius: 2 }} />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : trendingError ? (
+              <div style={{ padding: '40px 0', textAlign: 'center' }}>
+                <div style={{ fontSize: 20, marginBottom: 8 }}>📡</div>
+                <div style={{ fontSize: 13, color: 'var(--t2)', fontWeight: 600, marginBottom: 4 }}>Couldn't load trending tokens</div>
+                <div style={{ fontSize: 11, color: 'var(--t3)', marginBottom: 12 }}>API may be starting up — this takes ~30s on first load</div>
+                <button className="btn haptic" onClick={() => { setTrendingError(false); apiRequest('GET', '/tokens/trending').then(r => { if (r.success && r.data?.tokens) { setTrendingTokens(r.data.tokens.slice(0, 8)); setTrendingError(false); } else setTrendingError(true); }).catch(() => setTrendingError(true)); }} style={{ padding: '6px 14px', fontSize: 10 }}>Retry</button>
+              </div>
             ) : mode === 'beginner' ? (
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 8, padding: 12 }}>
                 {trendingTokens.slice(0, 6).map(tk => (

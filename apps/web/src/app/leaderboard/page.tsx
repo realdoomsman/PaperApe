@@ -101,6 +101,13 @@ export default function LeaderboardPage() {
             ))}
           </div>
         )}
+        {!loading && entries.length === 0 && (
+          <div style={{ padding: '48px 20px', textAlign: 'center' }}>
+            <div style={{ fontSize: 28, marginBottom: 8 }}>🏆</div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--t1)', marginBottom: 4 }}>No traders ranked yet</div>
+            <div style={{ fontSize: 12, color: 'var(--t3)' }}>Be the first — make some trades and climb the leaderboard!</div>
+          </div>
+        )}
         {!loading && entries.map(e => {
           const isMe = userEntry?.id === e.id;
           return (

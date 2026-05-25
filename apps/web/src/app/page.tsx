@@ -58,6 +58,7 @@ export default function HomePage() {
           <div className="plats-row">
             <div className="plat-tag">BullX</div><div className="plat-tag">Photon</div>
             <div className="plat-tag">Padre</div><div className="plat-tag">Axiom</div>
+            <div className="plat-tag">GMGN</div>
           </div>
         </section>
 
@@ -106,12 +107,12 @@ export default function HomePage() {
           <div className="feat-header"><h2>Built for the trenches</h2><p>Every feature designed to simulate real on-chain trading as accurately as possible.</p></div>
           <div className="feat-grid">
             {[
-              { icon: <IconZap />, cls: 'green', t: 'Live Price Streaming', d: 'Real-time prices from DexScreener API. No DOM scraping, no stale data.' },
-              { icon: <IconChart />, cls: 'cyan', t: 'Realistic Execution', d: 'Slippage curves modeled on pool liquidity. Priority fees factored into every trade.' },
-              { icon: <IconTarget />, cls: 'gold', t: 'Sell Init / Moon Bags', d: 'Recover your initial SOL and ride remaining tokens risk-free.' },
-              { icon: <IconShield />, cls: 'red', t: 'Scam Detection Academy', d: '50+ interactive lessons on honeypots, rug pulls, and phishing scams.' },
-              { icon: <IconUsers />, cls: 'purple', t: 'HIMOTHY Leaderboard', d: 'Weekly and monthly rankings. Prove your alpha risk-free.' },
-              { icon: <IconShare />, cls: 'green', t: 'Beginner + Pro Modes', d: 'Simplified interface for beginners. Full terminal for experienced traders.' },
+              { icon: <IconZap />, cls: 'green', t: 'Live Price Streaming', d: 'Real-time prices from Jupiter, Birdeye Pro, and Helius. Sub-second price updates via WebSocket.' },
+              { icon: <IconChart />, cls: 'cyan', t: 'Realistic Execution', d: 'Slippage curves modeled on pool liquidity. Priority fees and network congestion factored into every trade.' },
+              { icon: <IconTarget />, cls: 'gold', t: 'Sell Init / Moon Bags', d: 'Recover your initial SOL and ride remaining tokens risk-free. Just like real trading.' },
+              { icon: <IconShield />, cls: 'red', t: 'Scam Detection Academy', d: '50+ interactive lessons on honeypots, rug pulls, sandwich attacks, and phishing scams.' },
+              { icon: <IconUsers />, cls: 'purple', t: 'HIMOTHY Leaderboard', d: 'Weekly and monthly rankings. Prove your alpha risk-free against other traders.' },
+              { icon: <IconDownload />, cls: 'green', t: 'Chrome Extension', d: 'Paper trade directly inside BullX, Axiom, Photon, Padre, and GMGN. No tab-switching needed.' },
             ].map((f) => (
               <div key={f.t} className="feat-card">
                 <div className={`feat-icon ${f.cls}`}>{f.icon}</div>
