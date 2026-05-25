@@ -29,3 +29,6 @@ Thumbs.db
 firebase-debug.log
 .vercel
 .env*.local
+
+# Reference extension bundles (reverse engineering artifacts)
+extension/
