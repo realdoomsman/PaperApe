@@ -19,7 +19,7 @@ const app = express();
 const port = parseInt(process.env.PORT ?? '3001', 10);
 
 // ─── Middleware ──────────────────────────────────────────
-const corsOrigins = (process.env.CORS_ORIGINS ?? 'http://localhost:3000')
+const corsOrigins = (process.env.CORS_ORIGINS ?? 'http://localhost:3000,https://paperape.vercel.app,https://paper-ape.vercel.app,https://paperape.com,https://www.paperape.com')
   .split(',')
   .map((s) => s.trim());
 
