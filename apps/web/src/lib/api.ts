@@ -1,4 +1,4 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'https://paperapepaperape-api.onrender.com';
 
 const MAX_RETRIES = 3;
 const RETRY_DELAYS = [500, 1000, 2000]; // exponential backoff

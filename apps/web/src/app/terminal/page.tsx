@@ -174,7 +174,7 @@ function TerminalInner() {
   useEffect(() => {
     if (!tokenAddress) return;
 
-    const wsUrl = (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001').replace(/^http/, 'ws') + '/ws';
+    const wsUrl = (process.env.NEXT_PUBLIC_API_URL ?? 'https://paperapepaperape-api.onrender.com').replace(/^http/, 'ws') + '/ws';
     let ws: WebSocket | null = null;
     let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
     let alive = true;
