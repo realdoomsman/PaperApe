@@ -30,6 +30,8 @@ const corsOrigins = (process.env.CORS_ORIGINS ?? [
   'https://paper-ape.vercel.app',
   'https://paperape.com',
   'https://www.paperape.com',
+  'https://paperape.fun',
+  'https://www.paperape.fun',
 ].join(','))
   .split(',')
   .map((s) => s.trim())

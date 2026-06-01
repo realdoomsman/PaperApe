@@ -61,7 +61,7 @@ export default defineConfig({
       },
     },
     target: 'esnext',
-    minify: false,
+    minify: process.env.NODE_ENV === 'production' ? 'esbuild' : false,
     sourcemap: process.env.NODE_ENV === 'development' ? 'inline' : false,
   },
   resolve: {

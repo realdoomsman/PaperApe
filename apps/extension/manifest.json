@@ -3,6 +3,7 @@
   "name": "PaperApe — Simulated Trading",
   "version": "2.0.0",
   "description": "Paper trade Solana memecoins directly on BullX, Padre, Photon, Axiom, and GMGN terminals.",
+  "homepage_url": "https://paperape.fun",
   "icons": {
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",
@@ -41,7 +42,7 @@
         "http://localhost:3003/*",
         "https://paperape.vercel.app/*",
         "https://paper-ape.vercel.app/*",
-        "https://*.paperape.io/*",
+        "https://*.paperape.fun/*",
         "https://*.paperape.com/*"
       ],
       "js": ["bridge.js"],
@@ -68,7 +69,7 @@
     "*://*.gmgn.ai/*",
     "https://paperape.vercel.app/*",
     "https://paper-ape.vercel.app/*",
-    "*://*.paperape.io/*",
+    "*://*.paperape.fun/*",
     "*://*.paperape.com/*"
   ],
   "web_accessible_resources": [

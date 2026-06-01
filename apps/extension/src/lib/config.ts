@@ -1,6 +1,6 @@
 /** Environment-aware configuration */
 const DEFAULT_API_BASE = 'https://paperape-api.onrender.com';
-const DEFAULT_WEBAPP_URL = 'https://paperape.com';
+const DEFAULT_WEBAPP_URL = 'https://paperape.fun';
 
 export async function getConfig() {
   try {

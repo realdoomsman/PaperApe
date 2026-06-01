@@ -181,6 +181,9 @@ export default function ExtensionPage() {
             <p style={{ margin: 0, fontSize: 12, lineHeight: 1.7, color: 'var(--t2)' }}>
               It never sends real transactions, never controls your trading wallet, and never trades with real funds. PaperApe stays educational and simulated.
             </p>
+            <Link href="/privacy" style={{ display: 'inline-flex', marginTop: 10, fontSize: 11, fontWeight: 800, color: 'var(--accent)', textDecoration: 'none' }}>
+              Privacy Policy
+            </Link>
           </div>
         </div>
       </section>

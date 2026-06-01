@@ -31,4 +31,7 @@ firebase-debug.log
 .env*.local
 
 # Reference extension bundles (reverse engineering artifacts)
-extension/
+/extension/
+
+# Packaged extension artifacts
+apps/extension/*.zip

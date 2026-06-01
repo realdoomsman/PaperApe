@@ -40,7 +40,7 @@ export function useAuth() {
         const loginRes = await sendMessage({
           type: 'LOGIN',
           token: `ext-auto-${Date.now()}`,
-          user: { email: 'ext@paperape.io', name: 'Paper Trader' },
+          user: { email: 'ext@paperape.fun', name: 'Paper Trader' },
         });
         if (loginRes?.success) {
           const userRes = await api('GET', '/auth/me');

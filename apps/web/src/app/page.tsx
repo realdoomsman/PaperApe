@@ -35,7 +35,7 @@ export default function HomePage() {
         <section className="hero">
           <div className="hero-grid" />
           <div className="hero-chip an"><span className="hero-chip-dot" />Simulated Trading — Zero Real Risk</div>
-          <h1 className="hero-h1 an an1">Paper trade Solana<br/>like a <em>degen</em></h1>
+          <h1 className="hero-h1 an an1">Paper trade Solana tokens<br/>like a <em>degen</em></h1>
           <p className="hero-p an an2">
             The ultimate Solana memecoin trading simulator. Execute simulated buys and sells
             with live prices, realistic slippage, and on-chain fee modeling. Track your PnL,

@@ -204,7 +204,7 @@ export default function PopupApp() {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="ape@paperape.io"
+              placeholder="ape@paperape.fun"
               className="w-full px-3 py-2.5 bg-pa-paper border-2 border-pa-muted/15 rounded-sm text-pa-ink font-mono text-[13px] focus:outline-none focus:border-pa-green/40 transition-colors placeholder:text-pa-tan"
             />
           </div>

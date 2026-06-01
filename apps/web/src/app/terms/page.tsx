@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import Link from 'next/link';
 import AppShell from '@/components/AppShell';
 
 export default function TermsPage() {
@@ -70,7 +71,15 @@ export default function TermsPage() {
           ) : (
             <div style={{ fontSize: 13, color: 'var(--t1)', lineHeight: 1.8 }}>
               <h2 style={{ fontSize: 18, fontWeight: 800, color: 'var(--t0)', marginBottom: 12 }}>Privacy Policy</h2>
-              <p style={{ color: 'var(--t3)', marginBottom: 20 }}>Last updated: March 27, 2026</p>
+              <p style={{ color: 'var(--t3)', marginBottom: 20 }}>Last updated: June 1, 2026</p>
+
+              <div style={{ padding: '14px 18px', background: 'var(--green-bg)', border: '1px dashed var(--green)', borderRadius: 8, marginBottom: 20 }}>
+                <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--green)', marginBottom: 6 }}>Full extension-ready policy</div>
+                <div style={{ fontSize: 12, color: 'var(--t1)', marginBottom: 10 }}>
+                  PaperApe now has a dedicated privacy page for the website and Chrome extension, including permissions, token storage, and supported platform behavior.
+                </div>
+                <Link href="/privacy" className="btn haptic" style={{ textDecoration: 'none', fontSize: 11, padding: '6px 12px' }}>Open Privacy Policy</Link>
+              </div>
 
               <h3 style={{ fontSize: 14, fontWeight: 700, color: 'var(--t0)', marginBottom: 8 }}>1. Information We Collect</h3>
               <p style={{ marginBottom: 8 }}>We collect the following types of information:</p>

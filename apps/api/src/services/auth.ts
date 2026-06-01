@@ -17,7 +17,7 @@ function getMockUser(uid: string, name?: string, email?: string) {
       id: uid,
       firebase_uid: uid,
       username: name ?? `Ape_${uid.slice(-6)}`,
-      email: email ?? 'mockape@paperape.io',
+      email: email ?? 'mockape@paperape.fun',
       avatar_url: null,
       paper_balance: 100,
       total_pnl: 0,
@@ -35,7 +35,7 @@ export async function verifyFirebaseToken(idToken: string): Promise<FirebaseUser
     // In mock mode, accept any token
     return {
       id: `mock-user-${idToken.slice(0, 8)}`,
-      email: 'mockape@paperape.io',
+      email: 'mockape@paperape.fun',
       name: 'Mock Ape',
     };
   }

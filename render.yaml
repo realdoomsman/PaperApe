@@ -15,7 +15,7 @@ services:
       - key: PORT
         value: "10000"
       - key: CORS_ORIGINS
-        value: "https://paperape.vercel.app,https://paperape.com,https://www.paperape.com"
+        value: "https://paperape.vercel.app,https://paperape.com,https://www.paperape.com,https://paperape.fun,https://www.paperape.fun"
       # Firebase (REQUIRED)
       - key: FIREBASE_PROJECT_ID
         sync: false
