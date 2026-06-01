@@ -14,6 +14,7 @@ const PRO_NAV = [
   { href: '/terminal', label: 'Terminal', icon: IconTarget },
   { href: '/discover', label: 'Discover', icon: IconActivity },
   { href: '/wallets', label: 'Wallets', icon: IconWallet },
+  { href: '/extension', label: 'Extension', icon: IconExtension },
   { href: '/leaderboard', label: 'Leaderboard', icon: IconTrophy },
   { href: '/history', label: 'History', icon: IconUsers },
   { href: '/learn', label: 'Academy', icon: IconGraduationCap },
@@ -23,6 +24,7 @@ const BEG_NAV = [
   { href: '/dashboard', label: 'Dashboard', icon: IconChart },
   { href: '/terminal', label: 'Trade', icon: IconTarget },
   { href: '/discover', label: 'Discover', icon: IconActivity },
+  { href: '/extension', label: 'Extension', icon: IconExtension },
   { href: '/learn', label: 'Academy', icon: IconGraduationCap },
 ];
 
@@ -178,7 +180,7 @@ export default function AppShell({ children, balance }: AppShellProps) {
             { href: '/dashboard', label: 'Home', icon: IconChart },
             { href: '/terminal', label: 'Trade', icon: IconTarget },
             { href: '/discover', label: 'Discover', icon: IconActivity },
-            { href: '/wallets', label: 'Wallets', icon: IconWallet },
+            { href: '/extension', label: 'Extension', icon: IconExtension },
             { href: '/leaderboard', label: 'Ranks', icon: IconTrophy },
           ].map(n => {
             const I = n.icon;

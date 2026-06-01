@@ -649,6 +649,9 @@ button{cursor:pointer;border:none;background:none;font-family:inherit;}
 @media(max-width:900px){
   .stats-row{grid-template-columns:repeat(2,1fr);}
   .feat-grid{grid-template-columns:1fr;}
+  .extension-hero-grid,
+  .extension-feature-grid,
+  .extension-note-grid{grid-template-columns:1fr !important;}
   .hero-stats{flex-direction:column;}
   .nav-center{display:none;}
   .lb-row{grid-template-columns:36px 1fr 100px;}
