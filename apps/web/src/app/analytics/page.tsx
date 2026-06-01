@@ -2,6 +2,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import AppShell from '@/components/AppShell';
 import { useAuth } from '@/components/AuthContext';
+import { AuthRequiredPanel } from '@/components/AuthGate';
 import { apiRequest } from '@/lib/api';
 
 function MiniBar({ label, value, max, color }: { label: string; value: number; max: number; color: string }) {
@@ -35,11 +36,15 @@ function SparkLine({ data, width = 200, height = 40, color = 'var(--green)' }: {
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 export default function AnalyticsPage() {
-  const { token: authToken } = useAuth();
+  const { token: authToken, loading: authLoading } = useAuth();
   const [trades, setTrades] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!authToken) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     apiRequest('GET', '/trades/history', undefined, authToken || undefined).then(r => {
       if (r.success && r.data?.trades) setTrades(r.data.trades);
@@ -105,6 +110,23 @@ export default function AnalyticsPage() {
 
   const tokenEntries = stats ? Object.entries(stats.byToken).sort((a, b) => b[1].trades - a[1].trades) : [];
   const maxTrades = Math.max(...tokenEntries.map(([, v]) => v.trades), 1);
+
+  if (!authLoading && !authToken) {
+    return (
+      <AppShell>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+          <div>
+            <h1 style={{ fontSize: 18, fontWeight: 700, color: 'var(--t0)', margin: 0 }}>Performance Analytics</h1>
+            <div style={{ fontSize: 12, color: 'var(--t2)', marginTop: 2 }}>Analytics unlock after you create simulated trades</div>
+          </div>
+        </div>
+        <AuthRequiredPanel
+          title="Sign in to view analytics"
+          body="Win rate, streaks, PnL curves, and token breakdowns depend on your saved paper-trading history."
+        />
+      </AppShell>
+    );
+  }
 
   return (
     <AppShell>

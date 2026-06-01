@@ -28,6 +28,29 @@ export const viewport: Viewport = {
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  const serviceWorkerScript = process.env.NODE_ENV === 'production'
+    ? `
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function() {
+          navigator.serviceWorker.register('/sw.js')
+            .then(function(reg) { console.log('[PaperApe] SW registered:', reg.scope); })
+            .catch(function(err) { console.log('[PaperApe] SW failed:', err); });
+        });
+      }
+    `
+    : `
+      if ('serviceWorker' in navigator && ['localhost', '127.0.0.1'].includes(window.location.hostname)) {
+        navigator.serviceWorker.getRegistrations()
+          .then(function(registrations) { registrations.forEach(function(reg) { reg.unregister(); }); })
+          .catch(function() {});
+        if (window.caches) {
+          caches.keys()
+            .then(function(keys) { keys.filter(function(key) { return key.indexOf('paperape-') === 0; }).forEach(function(key) { caches.delete(key); }); })
+            .catch(function() {});
+        }
+      }
+    `;
+
   return (
     <html lang="en">
       <head>
@@ -39,15 +62,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </AuthProvider>
         <script
           dangerouslySetInnerHTML={{
-            __html: `
-              if ('serviceWorker' in navigator) {
-                window.addEventListener('load', function() {
-                  navigator.serviceWorker.register('/sw.js')
-                    .then(function(reg) { console.log('[PaperApe] SW registered:', reg.scope); })
-                    .catch(function(err) { console.log('[PaperApe] SW failed:', err); });
-                });
-              }
-            `,
+            __html: serviceWorkerScript,
           }}
         />
       </body>

@@ -61,6 +61,46 @@ async function simulateCongestion(priority?: string): Promise<{ congestion: stri
   return { congestion, priorityFee, delayMs };
 }
 
+function assertTradablePrice(priceData: any, tokenAddress: string) {
+  const priceSol = Number(priceData?.priceSol);
+  const priceUsd = Number(priceData?.priceUsd);
+  if (!Number.isFinite(priceSol) || priceSol <= 0 || !Number.isFinite(priceUsd) || priceUsd <= 0) {
+    throw new Error(`No valid price data for token ${tokenAddress}`);
+  }
+}
+
+function positionPnl(currentValue: number, remainingCostBasis: number, realizedPnl: number) {
+  const pnlSol = realizedPnl + currentValue - remainingCostBasis;
+  const pnlPercent = remainingCostBasis > 0
+    ? (pnlSol / remainingCostBasis) * 100
+    : currentValue > 0 || realizedPnl > 0
+      ? 999
+      : realizedPnl < 0
+        ? -100
+        : 0;
+  return { pnlSol, pnlPercent };
+}
+
+function numericOrNull(value: unknown): number | null {
+  const n = Number(value);
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+function marketCapUsd(tokenMeta: Partial<{ market_cap_usd: number; marketCap: number; mc: number; realMc: number }>): number | null {
+  return numericOrNull(tokenMeta.market_cap_usd ?? tokenMeta.marketCap ?? tokenMeta.mc ?? tokenMeta.realMc);
+}
+
+function tradeTokenFields(position: any, priceData: { priceUsd: number }, tokenMeta?: Partial<any>) {
+  return {
+    token_address: position.token_address,
+    token_symbol: position.token_symbol ?? tokenMeta?.symbol ?? '???',
+    token_name: position.token_name ?? tokenMeta?.name ?? 'Unknown',
+    token_image: position.token_image ?? tokenMeta?.image ?? null,
+    price_usd: priceData.priceUsd,
+    market_cap_usd: marketCapUsd(tokenMeta ?? {}) ?? numericOrNull(position.market_cap_usd) ?? 0,
+  };
+}
+
 // ─── Execute Buy ────────────────────────────────────────
 export async function executeBuy(userId: string, req: BuyRequest): Promise<{
   position: any;
@@ -74,14 +114,15 @@ export async function executeBuy(userId: string, req: BuyRequest): Promise<{
     getTokenPrice(req.token_address),
     getTokenOverview(req.token_address),
   ]);
+  assertTradablePrice(priceData, req.token_address);
 
   const marketPriceSol = priceData.priceSol;
   const liquidityUsd = priceData.liquidityUsd;
   const tradeAmountUsd = req.amount_sol * (priceData.priceUsd / priceData.priceSol);
   const slippage = calculateSlippage(tradeAmountUsd, liquidityUsd);
   const effectiveSlippage = Math.min(slippage, req.slippage_tolerance ?? DEFAULT_SLIPPAGE_TOLERANCE);
-  const fees = calculateFees();
-  const tokensReceived = calculateTokensReceived(req.amount_sol, marketPriceSol, effectiveSlippage);
+  const fees = calculateFees(txSim.priorityFee);
+  const tokensReceived = calculateTokensReceived(req.amount_sol, marketPriceSol, effectiveSlippage, fees);
 
   if (tokensReceived <= 0) throw new Error('Trade too small after fees and slippage');
 
@@ -91,9 +132,8 @@ export async function executeBuy(userId: string, req: BuyRequest): Promise<{
   if (isMockMode) {
     // Mock mode: in-memory
     const user = mockUsers.get(userId);
-    const totalCost = req.amount_sol + txSim.priorityFee;
-    if (!user || user.paper_balance < totalCost) {
-      throw new Error(`Insufficient balance. Have ${user?.paper_balance?.toFixed(4) ?? 0} SOL, need ${totalCost.toFixed(4)} SOL (${req.amount_sol} + ${txSim.priorityFee} priority fee)`);
+    if (!user || user.paper_balance < req.amount_sol) {
+      throw new Error(`Insufficient balance. Have ${user?.paper_balance?.toFixed(4) ?? 0} SOL, need ${req.amount_sol.toFixed(4)} SOL`);
     }
 
     if (!mockPositions.has(userId)) mockPositions.set(userId, []);
@@ -103,19 +143,32 @@ export async function executeBuy(userId: string, req: BuyRequest): Promise<{
     let position = userPositions.find(p => p.token_address === req.token_address && p.status === 'open');
 
     if (position) {
+      const realizedPnl = parseFloat(String(position.realized_pnl_sol ?? 0));
       const newTotalSol = position.amount_sol + req.amount_sol;
       const newTotalTokens = position.tokens_bought + tokensReceived;
       const newRemaining = position.tokens_remaining + tokensReceived;
       const avgEntryPrice = newTotalSol / newTotalTokens;
+      const prevEntryUsd = Number(position.entry_price_usd ?? 0);
+      const avgEntryPriceUsd = newTotalTokens > 0
+        ? (((prevEntryUsd || priceData.priceUsd) * position.tokens_bought) + (priceData.priceUsd * tokensReceived)) / newTotalTokens
+        : priceData.priceUsd;
+      const currentValue = newRemaining * marketPriceSol;
+      const pnl = positionPnl(currentValue, newTotalSol, realizedPnl);
       position.amount_sol = newTotalSol;
       position.tokens_bought = newTotalTokens;
       position.tokens_remaining = newRemaining;
       position.entry_price = avgEntryPrice;
+      position.entry_price_usd = avgEntryPriceUsd;
       position.current_price = marketPriceSol;
-      position.current_value = newRemaining * marketPriceSol;
-      position.pnl_sol = position.current_value - newTotalSol;
-      position.pnl_percent = newTotalSol > 0 ? (position.pnl_sol / newTotalSol) * 100 : 0;
+      position.current_price_usd = priceData.priceUsd;
+      position.current_value = currentValue;
+      position.market_cap_usd = marketCapUsd(tokenMeta) ?? position.market_cap_usd ?? 0;
+      position.realized_pnl_sol = realizedPnl;
+      position.pnl_sol = pnl.pnlSol;
+      position.pnl_percent = pnl.pnlPercent;
     } else {
+      const currentValue = tokensReceived * marketPriceSol;
+      const pnl = positionPnl(currentValue, req.amount_sol, 0);
       position = {
         id: genId(),
         user_id: userId,
@@ -124,13 +177,17 @@ export async function executeBuy(userId: string, req: BuyRequest): Promise<{
         token_name: tokenMeta.name ?? 'Unknown',
         token_image: tokenMeta.image ?? null,
         entry_price: executionPrice,
+        entry_price_usd: priceData.priceUsd,
         amount_sol: req.amount_sol,
         tokens_bought: tokensReceived,
         tokens_remaining: tokensReceived,
         current_price: marketPriceSol,
-        current_value: tokensReceived * marketPriceSol,
-        pnl_sol: 0,
-        pnl_percent: 0,
+        current_price_usd: priceData.priceUsd,
+        current_value: currentValue,
+        market_cap_usd: marketCapUsd(tokenMeta) ?? 0,
+        realized_pnl_sol: 0,
+        pnl_sol: pnl.pnlSol,
+        pnl_percent: pnl.pnlPercent,
         is_moon_bag: false,
         is_rugged: false,
         status: 'open',
@@ -145,17 +202,19 @@ export async function executeBuy(userId: string, req: BuyRequest): Promise<{
       user_id: userId,
       position_id: position.id,
       trade_type: 'buy',
+      ...tradeTokenFields(position, priceData, tokenMeta),
       amount_sol: req.amount_sol,
       amount_tokens: tokensReceived,
       execution_price: executionPrice,
       market_price: marketPriceSol,
       slippage_applied: effectiveSlippage,
       fee_applied: fees,
+      priority_fee: txSim.priorityFee,
       created_at: new Date().toISOString(),
     };
     mockTrades.push(trade);
 
-    user.paper_balance -= (req.amount_sol + txSim.priorityFee);
+    user.paper_balance -= req.amount_sol;
     return { position, trade, congestion: txSim.congestion };
   }
 
@@ -187,26 +246,39 @@ export async function executeBuy(userId: string, req: BuyRequest): Promise<{
     if (existingPosRef) {
       const existingPosSnap = await txn.get(existingPosRef);
       const data = existingPosSnap.data()!;
+      const realizedPnl = parseFloat(String(data.realized_pnl_sol ?? 0));
       const newTotalSol = (data.amount_sol ?? 0) + req.amount_sol;
       const newTotalTokens = (data.tokens_bought ?? 0) + tokensReceived;
       const newRemaining = (data.tokens_remaining ?? 0) + tokensReceived;
       const avgEntryPrice = newTotalSol / newTotalTokens;
+      const prevEntryUsd = Number(data.entry_price_usd ?? 0);
+      const avgEntryPriceUsd = newTotalTokens > 0
+        ? (((prevEntryUsd || priceData.priceUsd) * (data.tokens_bought ?? 0)) + (priceData.priceUsd * tokensReceived)) / newTotalTokens
+        : priceData.priceUsd;
+      const currentValue = newRemaining * marketPriceSol;
+      const pnl = positionPnl(currentValue, newTotalSol, realizedPnl);
 
       const updatedData = {
         amount_sol: newTotalSol,
         tokens_bought: newTotalTokens,
         tokens_remaining: newRemaining,
         entry_price: avgEntryPrice,
+        entry_price_usd: avgEntryPriceUsd,
         current_price: marketPriceSol,
-        current_value: newRemaining * marketPriceSol,
-        pnl_sol: (newRemaining * marketPriceSol) - newTotalSol,
-        pnl_percent: newTotalSol > 0 ? (((newRemaining * marketPriceSol) - newTotalSol) / newTotalSol) * 100 : 0,
+        current_price_usd: priceData.priceUsd,
+        current_value: currentValue,
+        market_cap_usd: marketCapUsd(tokenMeta) ?? data.market_cap_usd ?? 0,
+        realized_pnl_sol: realizedPnl,
+        pnl_sol: pnl.pnlSol,
+        pnl_percent: pnl.pnlPercent,
       };
 
       txn.update(existingPosRef, updatedData);
       position = { id: existingPosSnap.id, ...data, ...updatedData };
     } else {
       const newPosRef = positionsCol.doc();
+      const currentValue = tokensReceived * marketPriceSol;
+      const pnl = positionPnl(currentValue, req.amount_sol, 0);
       const newPosData = {
         user_id: userId,
         token_address: req.token_address,
@@ -214,13 +286,17 @@ export async function executeBuy(userId: string, req: BuyRequest): Promise<{
         token_name: tokenMeta.name ?? 'Unknown',
         token_image: tokenMeta.image ?? null,
         entry_price: executionPrice,
+        entry_price_usd: priceData.priceUsd,
         amount_sol: req.amount_sol,
         tokens_bought: tokensReceived,
         tokens_remaining: tokensReceived,
         current_price: marketPriceSol,
-        current_value: tokensReceived * marketPriceSol,
-        pnl_sol: 0,
-        pnl_percent: 0,
+        current_price_usd: priceData.priceUsd,
+        current_value: currentValue,
+        market_cap_usd: marketCapUsd(tokenMeta) ?? 0,
+        realized_pnl_sol: 0,
+        pnl_sol: pnl.pnlSol,
+        pnl_percent: pnl.pnlPercent,
         is_moon_bag: false,
         is_rugged: false,
         status: 'open',
@@ -237,12 +313,14 @@ export async function executeBuy(userId: string, req: BuyRequest): Promise<{
       user_id: userId,
       position_id: position.id,
       trade_type: 'buy',
+      ...tradeTokenFields(position, priceData, tokenMeta),
       amount_sol: req.amount_sol,
       amount_tokens: tokensReceived,
       execution_price: executionPrice,
       market_price: marketPriceSol,
       slippage_applied: effectiveSlippage,
       fee_applied: fees,
+      priority_fee: txSim.priorityFee,
       created_at: new Date().toISOString(),
     };
     txn.set(newTradeRef, tradeData);
@@ -255,7 +333,7 @@ export async function executeBuy(userId: string, req: BuyRequest): Promise<{
     return { position, trade: { id: newTradeRef.id, ...tradeData } };
   });
 
-  return { position: result.position, trade: result.trade };
+  return { position: result.position, trade: result.trade, congestion: txSim.congestion };
 }
 
 // ─── Execute Sell ───────────────────────────────────────
@@ -270,33 +348,48 @@ export async function executeSell(userId: string, req: SellRequest): Promise<{
     if (!position) throw new Error('Position not found or already closed');
     if (position.is_rugged) throw new Error('Cannot sell rugged token');
 
-    const priceData = await getTokenPrice(position.token_address);
+    const [priceData, tokenMeta] = await Promise.all([
+      getTokenPrice(position.token_address),
+      getTokenOverview(position.token_address),
+    ]);
+    assertTradablePrice(priceData, position.token_address);
     const tokensToSell = position.tokens_remaining * (req.percentage / 100);
+    if (tokensToSell <= 0) throw new Error('No tokens available to sell');
     const tradeAmountUsd = tokensToSell * priceData.priceUsd;
     const slippage = calculateSlippage(tradeAmountUsd, priceData.liquidityUsd);
-    const solReceived = calculateSolReceived(tokensToSell, priceData.priceSol, slippage);
     const fees = calculateFees();
+    const solReceived = calculateSolReceived(tokensToSell, priceData.priceSol, slippage, fees);
     const executionPrice = solReceived / tokensToSell;
     // Reduce cost basis proportionally
     const sellFraction = tokensToSell / position.tokens_remaining;
     const costBasisReduction = position.amount_sol * sellFraction;
+    const realizedPnlForTrade = solReceived - costBasisReduction;
+    const totalRealizedPnl = parseFloat(String(position.realized_pnl_sol ?? 0)) + realizedPnlForTrade;
     const newRemaining = position.tokens_remaining - tokensToSell;
     const isClosed = newRemaining <= 0.000001;
+    const newAmountSol = isClosed ? 0 : position.amount_sol - costBasisReduction;
+    const currentValue = isClosed ? 0 : newRemaining * priceData.priceSol;
+    const pnl = positionPnl(currentValue, newAmountSol, totalRealizedPnl);
 
     position.tokens_remaining = isClosed ? 0 : newRemaining;
-    position.amount_sol = isClosed ? 0 : position.amount_sol - costBasisReduction;
+    position.amount_sol = newAmountSol;
     position.current_price = priceData.priceSol;
-    position.current_value = isClosed ? 0 : newRemaining * priceData.priceSol;
-    position.pnl_sol = isClosed ? 0 : position.current_value - position.amount_sol;
-    position.pnl_percent = isClosed ? 0 : (position.amount_sol > 0 ? (position.pnl_sol / position.amount_sol) * 100 : 0);
+    position.current_price_usd = priceData.priceUsd;
+    position.current_value = currentValue;
+    position.market_cap_usd = marketCapUsd(tokenMeta) ?? position.market_cap_usd ?? 0;
+    position.realized_pnl_sol = totalRealizedPnl;
+    position.pnl_sol = pnl.pnlSol;
+    position.pnl_percent = pnl.pnlPercent;
     position.status = isClosed ? 'closed' : 'open';
     position.closed_at = isClosed ? new Date().toISOString() : null;
 
     const trade = {
       id: genId(), user_id: userId, position_id: position.id, trade_type: 'sell',
+      ...tradeTokenFields(position, priceData, tokenMeta),
       amount_sol: solReceived, amount_tokens: tokensToSell,
       execution_price: executionPrice, market_price: priceData.priceSol,
-      slippage_applied: slippage, fee_applied: fees, created_at: new Date().toISOString(),
+      slippage_applied: slippage, fee_applied: fees, realized_pnl_sol: realizedPnlForTrade,
+      created_at: new Date().toISOString(),
     };
     mockTrades.push(trade);
 
@@ -315,7 +408,11 @@ export async function executeSell(userId: string, req: SellRequest): Promise<{
   const preData = positionPreSnap.data()!;
   if (preData.is_rugged) throw new Error('Cannot sell rugged token');
 
-  const priceData = await getTokenPrice(preData.token_address);
+  const [priceData, tokenMeta] = await Promise.all([
+    getTokenPrice(preData.token_address),
+    getTokenOverview(preData.token_address),
+  ]);
+  assertTradablePrice(priceData, preData.token_address);
   const marketPriceSol = priceData.priceSol;
 
   const result = await db.runTransaction(async (txn) => {
@@ -328,24 +425,32 @@ export async function executeSell(userId: string, req: SellRequest): Promise<{
 
     const tokensRemaining = position.tokens_remaining ?? 0;
     const tokensToSell = tokensRemaining * (req.percentage / 100);
+    if (tokensToSell <= 0) throw new Error('No tokens available to sell');
     const tradeAmountUsd = tokensToSell * priceData.priceUsd;
     const slippage = calculateSlippage(tradeAmountUsd, priceData.liquidityUsd);
-    const solReceived = calculateSolReceived(tokensToSell, marketPriceSol, slippage);
     const fees = calculateFees();
+    const solReceived = calculateSolReceived(tokensToSell, marketPriceSol, slippage, fees);
     const executionPrice = solReceived / tokensToSell;
     const newRemaining = tokensRemaining - tokensToSell;
     const isClosed = newRemaining <= 0.000001;
     const sellFraction = tokensToSell / tokensRemaining;
     const costBasisReduction = (position.amount_sol ?? 0) * sellFraction;
+    const realizedPnlForTrade = solReceived - costBasisReduction;
+    const totalRealizedPnl = parseFloat(String(position.realized_pnl_sol ?? 0)) + realizedPnlForTrade;
     const newAmountSol = isClosed ? 0 : (position.amount_sol ?? 0) - costBasisReduction;
+    const currentValue = isClosed ? 0 : newRemaining * marketPriceSol;
+    const pnl = positionPnl(currentValue, newAmountSol, totalRealizedPnl);
 
     const updatedPosData = {
       tokens_remaining: isClosed ? 0 : newRemaining,
       amount_sol: newAmountSol,
       current_price: marketPriceSol,
-      current_value: isClosed ? 0 : newRemaining * marketPriceSol,
-      pnl_sol: isClosed ? 0 : (newRemaining * marketPriceSol) - newAmountSol,
-      pnl_percent: isClosed || newAmountSol <= 0 ? 0 : (((newRemaining * marketPriceSol) - newAmountSol) / newAmountSol) * 100,
+      current_price_usd: priceData.priceUsd,
+      current_value: currentValue,
+      market_cap_usd: marketCapUsd(tokenMeta) ?? position.market_cap_usd ?? 0,
+      realized_pnl_sol: totalRealizedPnl,
+      pnl_sol: pnl.pnlSol,
+      pnl_percent: pnl.pnlPercent,
       status: isClosed ? 'closed' : 'open',
       closed_at: isClosed ? new Date().toISOString() : null,
     };
@@ -358,12 +463,14 @@ export async function executeSell(userId: string, req: SellRequest): Promise<{
       user_id: userId,
       position_id: req.position_id,
       trade_type: 'sell',
+      ...tradeTokenFields(position, priceData, tokenMeta),
       amount_sol: solReceived,
       amount_tokens: tokensToSell,
       execution_price: executionPrice,
       market_price: marketPriceSol,
       slippage_applied: slippage,
       fee_applied: fees,
+      realized_pnl_sol: realizedPnlForTrade,
       created_at: new Date().toISOString(),
     };
     txn.set(newTradeRef, tradeData);
@@ -398,28 +505,41 @@ export async function executeSellInit(userId: string, req: SellInitRequest): Pro
     const position = userPositions.find(p => p.id === req.position_id && p.status === 'open');
     if (!position) throw new Error('Position not found');
 
-    const priceData = await getTokenPrice(position.token_address);
+    const [priceData, tokenMeta] = await Promise.all([
+      getTokenPrice(position.token_address),
+      getTokenOverview(position.token_address),
+    ]);
+    assertTradablePrice(priceData, position.token_address);
     const tradeAmountUsd = position.amount_sol * (priceData.priceUsd / priceData.priceSol);
     const slippage = calculateSlippage(tradeAmountUsd, priceData.liquidityUsd);
-    const tokensToSell = calculateSellInitTokens(position.amount_sol, priceData.priceSol, slippage);
+    const fees = calculateFees();
+    const tokensToSell = calculateSellInitTokens(position.amount_sol, priceData.priceSol, slippage, fees);
     const actualTokensToSell = Math.min(tokensToSell, position.tokens_remaining);
     const moonBagTokens = position.tokens_remaining - actualTokensToSell;
     if (moonBagTokens <= 0) throw new Error('Token hasn\'t pumped enough for sell-init');
 
-    const solReceived = calculateSolReceived(actualTokensToSell, priceData.priceSol, slippage);
+    const solReceived = calculateSolReceived(actualTokensToSell, priceData.priceSol, slippage, fees);
+    const realizedPnlForTrade = solReceived - position.amount_sol;
+    const totalRealizedPnl = parseFloat(String(position.realized_pnl_sol ?? 0)) + realizedPnlForTrade;
+    const currentValue = moonBagTokens * priceData.priceSol;
     position.tokens_remaining = moonBagTokens;
     position.is_moon_bag = true;
-    position.amount_sol = 0; // Capital fully recovered — moon bag is free
+    position.amount_sol = 0; // Capital fully recovered -- moon bag is free
     position.current_price = priceData.priceSol;
-    position.current_value = moonBagTokens * priceData.priceSol;
-    position.pnl_sol = position.current_value; // Entire moon bag is profit
+    position.current_price_usd = priceData.priceUsd;
+    position.current_value = currentValue;
+    position.market_cap_usd = marketCapUsd(tokenMeta) ?? position.market_cap_usd ?? 0;
+    position.realized_pnl_sol = totalRealizedPnl;
+    position.pnl_sol = totalRealizedPnl + currentValue;
     position.pnl_percent = 999; // Infinite return, cap display at 999%
 
     const trade = {
       id: genId(), user_id: userId, position_id: position.id, trade_type: 'sell_init',
+      ...tradeTokenFields(position, priceData, tokenMeta),
       amount_sol: solReceived, amount_tokens: actualTokensToSell,
       execution_price: solReceived / actualTokensToSell, market_price: priceData.priceSol,
-      slippage_applied: slippage, fee_applied: calculateFees(), created_at: new Date().toISOString(),
+      slippage_applied: slippage, fee_applied: fees, realized_pnl_sol: realizedPnlForTrade,
+      created_at: new Date().toISOString(),
     };
     mockTrades.push(trade);
 
@@ -438,7 +558,11 @@ export async function executeSellInit(userId: string, req: SellInitRequest): Pro
   const preData = posPreSnap.data()!;
   if (preData.is_rugged) throw new Error('Cannot sell rugged token');
 
-  const priceData = await getTokenPrice(preData.token_address);
+  const [priceData, tokenMeta] = await Promise.all([
+    getTokenPrice(preData.token_address),
+    getTokenOverview(preData.token_address),
+  ]);
+  assertTradablePrice(priceData, preData.token_address);
   const marketPriceSol = priceData.priceSol;
 
   const result = await db.runTransaction(async (txn) => {
@@ -452,23 +576,29 @@ export async function executeSellInit(userId: string, req: SellInitRequest): Pro
     const originalAmountSol = parseFloat(String(position.amount_sol));
     const tradeAmountUsd = originalAmountSol * (priceData.priceUsd / priceData.priceSol);
     const slippage = calculateSlippage(tradeAmountUsd, priceData.liquidityUsd);
-    const tokensToSell = calculateSellInitTokens(originalAmountSol, marketPriceSol, slippage);
+    const fees = calculateFees();
+    const tokensToSell = calculateSellInitTokens(originalAmountSol, marketPriceSol, slippage, fees);
     const tokensRemaining = parseFloat(String(position.tokens_remaining));
     const actualTokensToSell = Math.min(tokensToSell, tokensRemaining);
     const moonBagTokens = tokensRemaining - actualTokensToSell;
     if (moonBagTokens <= 0) throw new Error('Token hasn\'t pumped enough for sell-init');
 
-    const solReceived = calculateSolReceived(actualTokensToSell, marketPriceSol, slippage);
-    const fees = calculateFees();
+    const solReceived = calculateSolReceived(actualTokensToSell, marketPriceSol, slippage, fees);
     const executionPrice = solReceived / actualTokensToSell;
+    const realizedPnlForTrade = solReceived - originalAmountSol;
+    const totalRealizedPnl = parseFloat(String(position.realized_pnl_sol ?? 0)) + realizedPnlForTrade;
+    const currentValue = moonBagTokens * marketPriceSol;
 
     const updatedData = {
       tokens_remaining: moonBagTokens,
       is_moon_bag: true,
-      amount_sol: 0, // Capital fully recovered — moon bag is free
+      amount_sol: 0, // Capital fully recovered -- moon bag is free
       current_price: marketPriceSol,
-      current_value: moonBagTokens * marketPriceSol,
-      pnl_sol: moonBagTokens * marketPriceSol, // Entire value is profit
+      current_price_usd: priceData.priceUsd,
+      current_value: currentValue,
+      market_cap_usd: marketCapUsd(tokenMeta) ?? position.market_cap_usd ?? 0,
+      realized_pnl_sol: totalRealizedPnl,
+      pnl_sol: totalRealizedPnl + currentValue,
       pnl_percent: 999, // Infinite return (0 cost basis)
     };
 
@@ -480,12 +610,14 @@ export async function executeSellInit(userId: string, req: SellInitRequest): Pro
       user_id: userId,
       position_id: req.position_id,
       trade_type: 'sell_init',
+      ...tradeTokenFields(position, priceData, tokenMeta),
       amount_sol: solReceived,
       amount_tokens: actualTokensToSell,
       execution_price: executionPrice,
       market_price: marketPriceSol,
       slippage_applied: slippage,
       fee_applied: fees,
+      realized_pnl_sol: realizedPnlForTrade,
       created_at: new Date().toISOString(),
     };
     txn.set(newTradeRef, tradeData);
@@ -538,8 +670,9 @@ export async function updatePositionPrice(userId: string, positionId: string, cu
 
   const remaining = parseFloat(String(position.tokens_remaining));
   const originalAmountSol = parseFloat(String(position.amount_sol));
+  const realizedPnl = parseFloat(String(position.realized_pnl_sol ?? 0));
   const currentValue = remaining * currentPriceSol;
-  const pnlSol = currentValue - originalAmountSol;
+  const pnlSol = realizedPnl + currentValue - originalAmountSol;
   // Moon bags (amount_sol=0) have infinite return — cap at 999%
   const pnlPercent = originalAmountSol > 0 ? (pnlSol / originalAmountSol) * 100 : (currentValue > 0 ? 999 : 0);
 

@@ -30,6 +30,9 @@ tradesRouter.post('/buy', async (req, res) => {
       slippage_tolerance: req.body.slippage_tolerance
         ? parseFloat(req.body.slippage_tolerance)
         : undefined,
+      priority: ['normal', 'turbo', 'yolo'].includes(req.body.priority)
+        ? req.body.priority
+        : undefined,
     };
 
     if (!buyReq.token_address || isNaN(buyReq.amount_sol) || buyReq.amount_sol <= 0) {
@@ -42,6 +45,7 @@ tradesRouter.post('/buy', async (req, res) => {
       data: {
         position: result.position,
         trade: result.trade,
+        congestion: result.congestion,
       },
     });
   } catch (err: any) {
@@ -207,7 +211,7 @@ tradesRouter.delete('/auto-orders/:id', async (req, res) => {
 tradesRouter.get('/dca', async (req, res) => {
   try {
     const { getDCAOrders } = await import('../services/dcaEngine.js');
-    const orders = getDCAOrders(req.user.id);
+    const orders = await getDCAOrders(req.user.id);
     res.json({ success: true, data: { orders } });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
@@ -221,13 +225,22 @@ tradesRouter.get('/dca', async (req, res) => {
 tradesRouter.post('/dca', async (req, res) => {
   try {
     const { createDCAOrder } = await import('../services/dcaEngine.js');
-    const { token_address, token_symbol, amount_per_buy, interval, total_buys, slippage } = req.body;
-    const order = createDCAOrder(
+    const { token_address, token_symbol, amount_per_buy, interval, interval_ms, total_buys, slippage } = req.body;
+    const legacyIntervals: Record<string, string> = {
+      '60000': '1m',
+      '300000': '5m',
+      '900000': '15m',
+      '3600000': '1h',
+      '14400000': '4h',
+      '86400000': '1d',
+    };
+    const normalizedInterval = interval || legacyIntervals[String(interval_ms)];
+    const order = await createDCAOrder(
       req.user.id,
       token_address,
       token_symbol || '???',
       parseFloat(amount_per_buy),
-      interval,
+      normalizedInterval,
       parseInt(total_buys),
       slippage ? parseFloat(slippage) : 15,
     );
@@ -244,7 +257,7 @@ tradesRouter.post('/dca', async (req, res) => {
 tradesRouter.post('/dca/:id/pause', async (req, res) => {
   try {
     const { pauseDCAOrder } = await import('../services/dcaEngine.js');
-    const success = pauseDCAOrder(req.user.id, req.params.id);
+    const success = await pauseDCAOrder(req.user.id, req.params.id);
     if (!success) return res.status(404).json({ success: false, error: 'Order not found or not active/paused' });
     res.json({ success: true });
   } catch (err: any) {
@@ -259,7 +272,7 @@ tradesRouter.post('/dca/:id/pause', async (req, res) => {
 tradesRouter.delete('/dca/:id', async (req, res) => {
   try {
     const { cancelDCAOrder } = await import('../services/dcaEngine.js');
-    const success = cancelDCAOrder(req.user.id, req.params.id);
+    const success = await cancelDCAOrder(req.user.id, req.params.id);
     if (!success) return res.status(404).json({ success: false, error: 'Order not found' });
     res.json({ success: true });
   } catch (err: any) {

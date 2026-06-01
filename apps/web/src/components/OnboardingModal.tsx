@@ -1,43 +1,47 @@
 'use client';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { IconActivity, IconChart, IconGraduationCap, IconLogo, IconWallet } from '@/components/Icons';
 
 const STEPS = [
   {
-    title: 'Welcome to PaperApe! 🦍',
+    title: 'Welcome to PaperApe',
     desc: 'The ultimate Solana memecoin trading simulator. Practice trading with zero risk using simulated SOL.',
-    icon: '🎉',
+    icon: IconLogo,
   },
   {
     title: 'You start with 100 Paper SOL',
     desc: 'Use your paper balance to buy and sell any Solana token with live market prices. Slippage, fees, and execution are all simulated realistically.',
-    icon: '💰',
+    icon: IconWallet,
   },
   {
     title: 'Track your performance',
-    desc: 'Monitor your PnL, win rate, and trading streaks. Climb the leaderboard and prove your alpha — all risk-free.',
-    icon: '📊',
+    desc: 'Monitor your PnL, win rate, and trading streaks. Climb the leaderboard and prove your alpha, all risk-free.',
+    icon: IconChart,
   },
   {
     title: 'Learn with the Academy',
     desc: '50+ interactive lessons on trading, scam detection, and DeFi fundamentals. Earn rewards as you learn.',
-    icon: '🎓',
+    icon: IconGraduationCap,
   },
   {
     title: 'Pro tips',
     desc: 'Press ⌘K anytime for quick navigation. Use keyboard shortcuts in the terminal (B=Buy, S=Sell, 1-7=Amount). Star tokens to add them to your watchlist.',
-    icon: '⚡',
+    icon: IconActivity,
   },
 ];
 
 export default function OnboardingModal() {
+  const pathname = usePathname();
   const [show, setShow] = useState(false);
   const [step, setStep] = useState(0);
 
   useEffect(() => {
+    if (pathname === '/' || pathname?.startsWith('/login')) return;
     const seen = localStorage.getItem('pa_onboarded');
     if (!seen) setShow(true);
-  }, []);
+  }, [pathname]);
 
   const dismiss = () => {
     setShow(false);
@@ -47,6 +51,7 @@ export default function OnboardingModal() {
   if (!show) return null;
 
   const s = STEPS[step];
+  const StepIcon = s.icon;
   const isLast = step === STEPS.length - 1;
 
   return (
@@ -74,7 +79,19 @@ export default function OnboardingModal() {
         </div>
 
         <div style={{ padding: '24px 32px 28px', textAlign: 'center' }}>
-          <div style={{ fontSize: 48, marginBottom: 16 }}>{s.icon}</div>
+          <div style={{
+            width: 52,
+            height: 52,
+            margin: '0 auto 16px',
+            borderRadius: 12,
+            display: 'grid',
+            placeItems: 'center',
+            color: 'var(--accent-l)',
+            background: 'var(--accent-bg)',
+            border: '1px solid var(--accent-glow)',
+          }}>
+            <StepIcon style={{ width: 26, height: 26 }} />
+          </div>
           <h2 style={{ fontSize: 20, fontWeight: 800, color: 'var(--t0)', margin: '0 0 10px' }}>{s.title}</h2>
           <p style={{ fontSize: 13, color: 'var(--t2)', lineHeight: 1.7, margin: '0 0 24px' }}>{s.desc}</p>
 
@@ -88,7 +105,7 @@ export default function OnboardingModal() {
             {isLast ? (
               <Link href="/terminal" onClick={dismiss} className="btn primary haptic"
                 style={{ padding: '10px 24px', fontSize: 12 }}>
-                Start Trading →
+                Start Trading
               </Link>
             ) : (
               <button onClick={() => setStep(step + 1)} className="btn primary haptic"

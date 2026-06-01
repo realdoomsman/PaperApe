@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import AppShell from '@/components/AppShell';
 import { apiRequest } from '@/lib/api';
+import { normalizeToken } from '@/lib/mappers';
 
 interface TokenData {
   name: string;
@@ -60,7 +61,7 @@ export default function ComparePage() {
     if (!q.trim()) return;
     const setResults = side === 'A' ? setResultsA : setResultsB;
     const r = await apiRequest('GET', `/tokens/search?q=${encodeURIComponent(q)}`);
-    if (r.success && r.data?.results) setResults(r.data.results.slice(0, 5));
+    if (r.success && r.data?.tokens) setResults(r.data.tokens.slice(0, 5));
   };
 
   const selectToken = async (t: any, side: 'A' | 'B') => {
@@ -72,18 +73,19 @@ export default function ComparePage() {
     setLoading(true);
     setSearch(t.symbol || t.name);
     setResults([]);
-    const r = await apiRequest('GET', `/tokens/${t.address}/live`);
-    if (r.success && r.data) {
+    const r = await apiRequest('GET', `/tokens/${t.address}`);
+    if (r.success && r.data?.token) {
+      const token = normalizeToken(r.data.token);
       setToken({
-        name: r.data.name || t.name,
-        symbol: r.data.symbol || t.symbol,
+        name: token.name || t.name,
+        symbol: token.symbol || t.symbol,
         address: t.address,
-        priceUsd: parseFloat(r.data.priceUsd || 0),
-        volume24h: parseFloat(r.data.volume24h || 0),
-        liquidity: parseFloat(r.data.liquidity || 0),
-        priceChange24h: parseFloat(r.data.priceChange24h || 0),
-        mcap: parseFloat(r.data.mcap || 0),
-        image: r.data.image,
+        priceUsd: token.priceUsd,
+        volume24h: token.volume24h,
+        liquidity: token.liquidity,
+        priceChange24h: token.priceChange24h,
+        mcap: token.marketCap,
+        image: token.image ?? undefined,
       });
     }
     setLoading(false);

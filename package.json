@@ -19,5 +19,8 @@
     "firebase-tools": "^15.18.0",
     "@esbuild/darwin-arm64": "^0.28.0"
   },
+  "overrides": {
+    "postcss": "^8.5.10"
+  },
   "packageManager": "npm@10.8.0"
 }

@@ -18,7 +18,7 @@ export type PriceUpdateCallback = (price: { priceUsd: number; priceSol: number }
 
 export const PLATFORM_CONFIGS: PlatformConfig[] = [
   { id: 'bullx',  name: 'BullX',  urlPattern: /bullx\.(io|com)/ },
-  { id: 'padre',  name: 'Padre',  urlPattern: /padre\.market/ },
+  { id: 'padre',  name: 'Padre',  urlPattern: /padre\.(market|gg)|trade\.padre\.gg/ },
   { id: 'photon', name: 'Photon', urlPattern: /photon-sol\.tinyastro\.io|photon\.tinyastro\.io/ },
   { id: 'axiom',  name: 'Axiom',  urlPattern: /axiom\.trade/ },
   { id: 'gmgn',   name: 'GMGN',   urlPattern: /gmgn\.ai/ },

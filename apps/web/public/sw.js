@@ -41,6 +41,12 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // Never cache Next.js runtime chunks/RSC payloads. Stale app chunks can break
+  // hydration after a deploy or local rebuild.
+  if (url.pathname.startsWith('/_next') || url.pathname === '/sw.js') {
+    return;
+  }
+
   // Network-first for all same-origin requests
   event.respondWith(
     fetch(event.request)
@@ -59,4 +65,3 @@ self.addEventListener('fetch', (event) => {
       })
   );
 });
-

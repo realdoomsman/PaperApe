@@ -1,58 +1,85 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'https://paperapepaperape-api.onrender.com';
+import type { ApiResponse } from '@paperape/shared';
+import { getApiBase } from './config';
 
 const MAX_RETRIES = 3;
 const RETRY_DELAYS = [500, 1000, 2000]; // exponential backoff
 const TIMEOUT_MS = 10000;
 
+async function sleep(ms: number) {
+  await new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function shouldRetry(method: string, status?: number) {
+  if (status && status >= 400 && status < 500) return false;
+  return method.toUpperCase() === 'GET';
+}
+
+async function parseApiResponse<T>(res: Response): Promise<ApiResponse<T>> {
+  const contentType = res.headers.get('content-type') ?? '';
+
+  if (contentType.includes('application/json')) {
+    const json = await res.json();
+    return { status: res.status, ...json };
+  }
+
+  const text = await res.text();
+  return {
+    success: false,
+    status: res.status,
+    error: text.trim() || `Request failed with status ${res.status}`,
+  };
+}
+
 export async function apiRequest<T = any>(
   method: string,
   path: string,
-  body?: any,
+  body?: unknown,
   token?: string
-): Promise<{ success: boolean; data?: T; error?: string }> {
+): Promise<ApiResponse<T>> {
+  if (method.toUpperCase() !== 'GET' && !token) {
+    return { success: false, status: 401, error: 'Sign in required' };
+  }
+
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
   };
   if (token) headers['Authorization'] = `Bearer ${token}`;
 
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
-      const res = await fetch(`${API_BASE}${path}`, {
+    try {
+      const res = await fetch(`${getApiBase()}${path}`, {
         method,
         headers,
         body: body ? JSON.stringify(body) : undefined,
         signal: controller.signal,
       });
 
-      clearTimeout(timeoutId);
-
-      // Don't retry on client errors (4xx), only on server errors (5xx)
-      if (res.status >= 500 && attempt < MAX_RETRIES - 1) {
-        await new Promise(r => setTimeout(r, RETRY_DELAYS[attempt] || 2000));
+      if (res.status >= 500 && attempt < MAX_RETRIES - 1 && shouldRetry(method, res.status)) {
+        await sleep(RETRY_DELAYS[attempt] || 2000);
         continue;
       }
 
-      const json = await res.json();
-      return json;
+      const parsed = await parseApiResponse<T>(res);
+      if (res.status === 401) {
+        return { ...parsed, success: false, error: parsed.error || 'Sign in required' };
+      }
+      return parsed;
     } catch (err: any) {
+      if (attempt < MAX_RETRIES - 1 && shouldRetry(method)) {
+        await sleep(RETRY_DELAYS[attempt] || 2000);
+        continue;
+      }
+
       if (err.name === 'AbortError') {
-        if (attempt < MAX_RETRIES - 1) {
-          await new Promise(r => setTimeout(r, RETRY_DELAYS[attempt] || 2000));
-          continue;
-        }
         return { success: false, error: 'Request timed out' };
       }
 
-      // Network error — retry
-      if (attempt < MAX_RETRIES - 1) {
-        await new Promise(r => setTimeout(r, RETRY_DELAYS[attempt] || 2000));
-        continue;
-      }
-
       return { success: false, error: err.message || 'Network error' };
+    } finally {
+      clearTimeout(timeoutId);
     }
   }
 

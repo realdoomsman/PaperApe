@@ -11,7 +11,7 @@ interface AuthState {
 export function useAuth() {
   const [auth, setAuth] = useState<AuthState>({
     isLoggedIn: false,
-    userName: '@sardooms',
+    userName: 'Paper Trader',
     balance: 0,
     isLoading: true,
   });
@@ -25,7 +25,7 @@ export function useAuth() {
         if (userRes?.success && userRes.data?.user) {
           setAuth({
             isLoggedIn: true,
-            userName: userRes.data.user.username ?? '@sardooms',
+            userName: userRes.data.user.username ?? 'Paper Trader',
             balance: parseFloat(userRes.data.user.paper_balance ?? 100),
             isLoading: false,
           });
@@ -40,13 +40,13 @@ export function useAuth() {
         const loginRes = await sendMessage({
           type: 'LOGIN',
           token: `ext-auto-${Date.now()}`,
-          user: { email: 'ext@paperape.io', name: '@sardooms' },
+          user: { email: 'ext@paperape.io', name: 'Paper Trader' },
         });
         if (loginRes?.success) {
           const userRes = await api('GET', '/auth/me');
           setAuth({
             isLoggedIn: true,
-            userName: userRes?.data?.user?.username ?? '@sardooms',
+            userName: userRes?.data?.user?.username ?? 'Paper Trader',
             balance: parseFloat(userRes?.data?.user?.paper_balance ?? 100),
             isLoading: false,
           });

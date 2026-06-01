@@ -49,8 +49,10 @@ export default function AppShell({ children, balance }: AppShellProps) {
   }, []);
 
   const navItems = mode === 'beginner' ? BEG_NAV : PRO_NAV;
+  const isAuthed = !!user;
   const displayBal = balance ?? 100;
   const initials = user?.displayName?.slice(0, 2).toUpperCase() || user?.email?.slice(0, 2).toUpperCase() || 'PA';
+  const loginHref = `/login?returnTo=${encodeURIComponent(pathname || '/dashboard')}`;
 
   return (
     <div className={`app-layout ${mode}`}>
@@ -91,14 +93,26 @@ export default function AppShell({ children, balance }: AppShellProps) {
           </div>
 
           <div className="nav-bal">
-            <span className="mono">{displayBal.toFixed(mode === 'pro' ? 4 : 2)}</span> SOL
+            {isAuthed ? (
+              <>
+                <span className="mono">{displayBal.toFixed(mode === 'pro' ? 4 : 2)}</span> SOL
+              </>
+            ) : (
+              <span style={{ color: 'var(--t3)' }}>Public</span>
+            )}
           </div>
 
-          <button className="nav-avatar" onClick={() => setMenuOpen(!menuOpen)}>
-            {initials}
-          </button>
+          {isAuthed ? (
+            <button className="nav-avatar" onClick={() => setMenuOpen(!menuOpen)}>
+              {initials}
+            </button>
+          ) : (
+            <Link href={loginHref} className="btn primary haptic" style={{ padding: '6px 12px', fontSize: 11, fontWeight: 700 }}>
+              Sign in
+            </Link>
+          )}
 
-          {menuOpen && (
+          {menuOpen && isAuthed && (
             <div className="nav-menu">
               <div style={{ padding: '8px 12px', borderBottom: '1px solid var(--border-0)', marginBottom: 4 }}>
                 <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--t0)' }}>{user?.displayName || 'Trader'}</div>

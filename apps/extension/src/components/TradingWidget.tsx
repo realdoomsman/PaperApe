@@ -32,6 +32,7 @@ export default function TradingWidget({ adapter }: Props) {
   const [showTpSl, setShowTpSl] = useState(false);
   const [isCongested, setIsCongested] = useState(false);
   const [notification, setNotification] = useState<{ message: string; type: NotifType } | null>(null);
+  const canTrade = auth.isLoggedIn && !!token.address && token.priceSol > 0;
 
   const notify = useCallback((message: string, type: NotifType) => {
     setNotification({ message, type });
@@ -66,22 +67,43 @@ export default function TradingWidget({ adapter }: Props) {
   }, [token.address, token.priceUsd, token.priceSol, updatePrice, updatePrices]);
 
   // ─── Trade Handlers ─────────────────────────────────────
+  const injectFillMarker = useCallback((type: 'buy' | 'sell' | 'sell_init', result: any) => {
+    const trade = result?.trade ?? {};
+    const position = result?.position ?? positions[0];
+    adapter.injectTradeMarker({
+      type: trade.trade_type ?? type,
+      tokenSymbol: trade.token_symbol ?? position?.tokenSymbol ?? token.symbol,
+      priceUsd: Number(trade.price_usd ?? position?.currentPriceUsd ?? token.priceUsd ?? 0),
+      marketCapUsd: Number(trade.market_cap_usd ?? position?.marketCapUsd ?? token.marketCap ?? 0),
+      amountSol: Number(trade.amount_sol ?? result?.amountSol ?? result?.solReceived ?? 0),
+    });
+  }, [adapter, positions, token.marketCap, token.priceUsd, token.symbol]);
+
   const handleBuy = async (amount: number) => {
+    if (!auth.isLoggedIn) {
+      notify('Sign in from PaperApe to trade here', 'info');
+      openDashboard();
+      return;
+    }
+    if (!token.address || token.priceSol <= 0) {
+      notify('Token price is not ready yet', 'error');
+      return;
+    }
     notify('Executing buy...', 'info');
     const result = await executeBuy(amount, slippage);
     if (!result) return;
     if (result.success) {
       notify(`Bought with ${amount} SOL`, 'success');
       auth.updateBalance(-amount);
-      // Inject PnL row into host platform
-      if (positions.length > 0) {
+      injectFillMarker('buy', result);
+      if (result.position) {
         adapter.injectPnlRow({
-          tokenSymbol: positions[0].tokenSymbol,
-          entryPrice: positions[0].amountSol,
-          currentPrice: positions[0].currentValue,
-          pnlPercent: positions[0].pnlPercent,
-          amountSol: positions[0].amountSol,
-          isMoonBag: positions[0].isMoonBag,
+          tokenSymbol: result.position.tokenSymbol,
+          entryPrice: result.position.entryPrice,
+          currentPrice: result.position.currentPrice,
+          pnlPercent: result.position.pnlPercent,
+          amountSol: result.position.amountSol,
+          isMoonBag: result.position.isMoonBag,
         });
       }
     } else {
@@ -92,36 +114,80 @@ export default function TradingWidget({ adapter }: Props) {
   };
 
   const handleSell = async (posId: string, pct: number) => {
+    if (!auth.isLoggedIn) {
+      notify('Sign in from PaperApe to sell here', 'info');
+      openDashboard();
+      return;
+    }
     notify(`Selling ${pct}%...`, 'info');
     const result = await executeSell(posId, pct);
     if (!result) return;
     if (result.success) {
-      notify(`Sold! +${result.solReceived.toFixed(4)} SOL`, 'success');
-      auth.updateBalance(result.solReceived);
+      const solReceived = result.solReceived ?? 0;
+      notify(`Sold! +${solReceived.toFixed(4)} SOL`, 'success');
+      auth.updateBalance(solReceived);
+      injectFillMarker('sell', result);
+      if (result.position && result.position.tokensRemaining > 0) {
+        adapter.injectPnlRow({
+          tokenSymbol: result.position.tokenSymbol,
+          entryPrice: result.position.entryPrice,
+          currentPrice: result.position.currentPrice,
+          pnlPercent: result.position.pnlPercent,
+          amountSol: result.position.amountSol,
+          isMoonBag: result.position.isMoonBag,
+        });
+      }
     } else {
       notify(result.error ?? 'Sell failed', 'error');
     }
   };
 
   const handleSellInit = async (posId: string) => {
+    if (!auth.isLoggedIn) {
+      notify('Sign in from PaperApe to sell-init here', 'info');
+      openDashboard();
+      return;
+    }
     notify('Selling initial...', 'info');
     const result = await executeSellInit(posId);
     if (!result) return;
     if (result.success) {
-      notify('Init recovered! Moon bag active 🌙', 'success');
-      auth.updateBalance(result.solReceived);
+      const solReceived = result.solReceived ?? 0;
+      notify('Init recovered. Moon bag active', 'success');
+      auth.updateBalance(solReceived);
+      injectFillMarker('sell_init', result);
+      if (result.position) {
+        adapter.injectPnlRow({
+          tokenSymbol: result.position.tokenSymbol,
+          entryPrice: result.position.entryPrice,
+          currentPrice: result.position.currentPrice,
+          pnlPercent: result.position.pnlPercent,
+          amountSol: result.position.amountSol,
+          isMoonBag: result.position.isMoonBag,
+        });
+      }
     } else {
       notify(result.error ?? 'Sell Init failed', 'error');
     }
   };
 
   const handleTp = async (posId: string, trigger: number, sell: number) => {
+    if (!auth.isLoggedIn) {
+      notify('Sign in from PaperApe to set TP', 'info');
+      openDashboard();
+      return;
+    }
     await setTakeProfit(posId, trigger, sell);
     notify(`TP: Sell ${sell}% at +${trigger}%`, 'info');
     setShowTpSl(false);
   };
 
   const handleSl = async (posId: string, trigger: number) => {
+    if (!auth.isLoggedIn) {
+      notify('Sign in from PaperApe to set SL', 'info');
+      openDashboard();
+      return;
+    }
     await setStopLoss(posId, trigger);
     notify(`SL: Sell 100% at ${trigger}%`, 'info');
     setShowTpSl(false);
@@ -174,6 +240,23 @@ export default function TradingWidget({ adapter }: Props) {
           </div>
         )}
 
+        {!auth.isLoading && !auth.isLoggedIn && (
+          <div className="mb-2 p-2 rounded-sm border border-dashed border-pa-blue/20 bg-pa-blue/[0.06]">
+            <div className="text-[9px] font-bold text-pa-blue uppercase tracking-[0.5px] mb-1">
+              Sign in required
+            </div>
+            <div className="text-[10px] text-pa-muted leading-snug mb-2">
+              Connect PaperApe once, then simulated buys and sells work on this platform.
+            </div>
+            <button
+              onClick={openDashboard}
+              className="w-full py-1.5 text-[10px] font-bold text-pa-paper bg-pa-blue border border-pa-blue rounded-sm uppercase tracking-[0.5px]"
+            >
+              Open PaperApe
+            </button>
+          </div>
+        )}
+
         {/* Token Info */}
         <div className="mb-2.5 pb-2 border-b border-dashed border-pa-muted/12">
           <div className="text-[13px] font-bold text-pa-ink mb-px">{token.name}</div>
@@ -218,7 +301,7 @@ export default function TradingWidget({ adapter }: Props) {
                   <button
                     key={amt}
                     onClick={() => handleBuy(amt)}
-                    disabled={isLoading}
+                    disabled={isLoading || !canTrade}
                     className="bg-pa-green/[0.06] border-2 border-pa-green/15 text-pa-green text-[9px] font-bold font-mono py-1.5 px-0.5 rounded-sm cursor-pointer transition-all hover:bg-pa-green/[0.12] hover:border-pa-green/30 hover:shadow-[2px_2px_0px_rgba(60,40,10,0.15)] hover:-translate-y-px disabled:opacity-35 disabled:cursor-not-allowed"
                   >
                     {amt} SOL
@@ -294,7 +377,7 @@ export default function TradingWidget({ adapter }: Props) {
                         <button
                           key={pct}
                           onClick={() => handleSell(pos.id, pct)}
-                          disabled={isLoading}
+                          disabled={isLoading || !auth.isLoggedIn}
                           className="bg-pa-red/[0.06] border-2 border-pa-red/15 text-pa-red text-[9px] font-bold font-mono py-[5px] px-0.5 rounded-sm cursor-pointer transition-all hover:bg-pa-red/[0.12] hover:border-pa-red/30 disabled:opacity-35 disabled:cursor-not-allowed"
                         >
                           {pct}%
@@ -302,7 +385,7 @@ export default function TradingWidget({ adapter }: Props) {
                       ))}
                       <button
                         onClick={() => handleSellInit(pos.id)}
-                        disabled={isLoading}
+                        disabled={isLoading || !auth.isLoggedIn}
                         className="bg-pa-gold/[0.06] border-2 border-pa-gold/15 text-pa-gold text-[8px] font-bold font-display py-[5px] px-0.5 rounded-sm cursor-pointer tracking-[0.5px] uppercase transition-all hover:bg-pa-gold/[0.12] hover:border-pa-gold/30 disabled:opacity-35 disabled:cursor-not-allowed"
                       >
                         Sell Init
@@ -315,7 +398,7 @@ export default function TradingWidget({ adapter }: Props) {
                   <>
                     <button
                       onClick={() => setShowTpSl(!showTpSl)}
-                      disabled={isLoading}
+                      disabled={isLoading || !auth.isLoggedIn}
                       className="w-full py-[5px] mt-1.5 text-[9px] font-bold text-pa-blue bg-pa-blue/[0.04] border border-dashed border-pa-blue/15 rounded-sm cursor-pointer font-display transition-all uppercase tracking-wider hover:bg-pa-blue/[0.08] disabled:opacity-35"
                     >
                       {showTpSl ? 'Hide TP/SL' : 'Set TP / SL'}

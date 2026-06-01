@@ -12,7 +12,7 @@ export interface DCAOrder {
   token_address: string;
   token_symbol: string;
   amount_per_buy: number;       // SOL per buy
-  interval: string;             // '1m' | '5m' | '15m' | '1h' | '4h'
+  interval: string;             // '1m' | '5m' | '15m' | '1h' | '4h' | '1d'
   total_buys: number;           // max number of buys
   completed_buys: number;
   slippage: number;
@@ -28,6 +28,7 @@ const INTERVAL_MS: Record<string, number> = {
   '15m': 15 * 60_000,
   '1h':  60 * 60_000,
   '4h':  4 * 60 * 60_000,
+  '1d':  24 * 60 * 60_000,
 };
 
 // ─── Firestore Helpers ──────────────────────────────────

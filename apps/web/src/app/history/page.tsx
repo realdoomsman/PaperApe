@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import AppShell from '@/components/AppShell';
 import { useAuth } from '@/components/AuthContext';
+import { AuthRequiredPanel } from '@/components/AuthGate';
 import { apiRequest } from '@/lib/api';
 import { formatSol, formatPercent, truncateAddress } from '@paperape/shared';
 import type { Position } from '@paperape/shared';
@@ -25,7 +26,7 @@ const ShareCard = dynamic(() => import('@/components/ShareCard'), { ssr: false }
 const FILTERS = ['All', 'Open', 'Closed', 'Moon Bags', 'Rugged'];
 
 export default function HistoryPage() {
-  const { token: authToken } = useAuth();
+  const { token: authToken, loading: authLoading } = useAuth();
   const [positions, setPositions] = useState<Position[]>([]);
   const [trades, setTrades] = useState<any[]>([]);
   const [filter, setFilter] = useState('All');
@@ -67,6 +68,21 @@ export default function HistoryPage() {
   const totalPnl = positions.reduce((s, p) => s + parseFloat(String(p.pnl_sol ?? 0)), 0);
   const winCount = positions.filter(p => parseFloat(String(p.pnl_sol ?? 0)) > 0).length;
   const lossCount = positions.filter(p => parseFloat(String(p.pnl_sol ?? 0)) < 0).length;
+
+  if (!authLoading && !authToken) {
+    return (
+      <AppShell>
+        <div style={{ marginBottom: 12 }}>
+          <h1 style={{ fontSize: 18, fontWeight: 700, color: 'var(--t0)', margin: 0 }}>Trade History</h1>
+          <div style={{ fontSize: 12, color: 'var(--t2)', marginTop: 2 }}>Your simulated trade record is private to your account</div>
+        </div>
+        <AuthRequiredPanel
+          title="Sign in to view history"
+          body="Paper trades, closed positions, notes, and exports are saved to your simulated account."
+        />
+      </AppShell>
+    );
+  }
 
   return (
     <AppShell>

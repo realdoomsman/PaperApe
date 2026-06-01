@@ -1,5 +1,29 @@
 import type { TokenChangeCallback, PriceUpdateCallback, HostStyles } from './types';
 
+interface TradeFillMarker {
+  type: 'buy' | 'sell' | 'sell_init';
+  tokenSymbol: string;
+  priceUsd: number;
+  marketCapUsd?: number;
+  amountSol?: number;
+}
+
+function formatUsd(price: number) {
+  if (!Number.isFinite(price) || price <= 0) return '-';
+  if (price < 0.01) return `$${price.toExponential(3)}`;
+  if (price < 1) return `$${price.toFixed(5)}`;
+  return `$${price.toFixed(4)}`;
+}
+
+function formatMcap(value?: number) {
+  const n = Number(value);
+  if (!Number.isFinite(n) || n <= 0) return 'MC n/a';
+  if (n >= 1_000_000_000) return `MC $${(n / 1_000_000_000).toFixed(2)}B`;
+  if (n >= 1_000_000) return `MC $${(n / 1_000_000).toFixed(2)}M`;
+  if (n >= 1_000) return `MC $${(n / 1_000).toFixed(1)}K`;
+  return `MC $${n.toFixed(0)}`;
+}
+
 /**
  * BaseAdapter — handles SPA navigation detection, token change notifications,
  * WebSocket event forwarding, and PnL row injection.
@@ -114,6 +138,92 @@ export abstract class BaseAdapter {
       </div>
     `;
     table.firstChild ? table.insertBefore(row, table.firstChild) : table.appendChild(row);
+  }
+
+  /** Add a best-effort paper fill marker to host TradingView/lightweight chart surfaces. */
+  injectTradeMarker(marker: TradeFillMarker) {
+    const isBuy = marker.type === 'buy';
+    const color = isBuy ? '#10b981' : marker.type === 'sell_init' ? '#d49b26' : '#ef4444';
+    const labelType = marker.type === 'sell_init' ? 'SELL INIT' : isBuy ? 'BUY' : 'SELL';
+    const label = `PaperApe ${labelType} ${marker.tokenSymbol} ${formatMcap(marker.marketCapUsd)} @ ${formatUsd(marker.priceUsd)}`;
+
+    if (this.tryTradingViewMarker(marker.priceUsd, label, color)) return;
+    this.injectFallbackChartLine(label, color);
+  }
+
+  private tryTradingViewMarker(priceUsd: number, label: string, color: string) {
+    const w = window as any;
+    const candidates = [
+      w.tvWidget,
+      w.tradingViewWidget,
+      w.chartWidget,
+      w.widget,
+      w.TradingView?.widget,
+    ].filter(Boolean);
+
+    for (const candidate of candidates) {
+      try {
+        const chart = typeof candidate.activeChart === 'function'
+          ? candidate.activeChart()
+          : typeof candidate.chart === 'function'
+            ? candidate.chart()
+            : candidate;
+        if (typeof chart?.createShape !== 'function') continue;
+        chart.createShape(
+          { price: priceUsd, time: Math.floor(Date.now() / 1000) },
+          {
+            shape: 'horizontal_line',
+            text: label,
+            lock: true,
+            disableSelection: true,
+            overrides: {
+              linecolor: color,
+              textcolor: color,
+              linewidth: 2,
+              linestyle: 2,
+            },
+          },
+        );
+        return true;
+      } catch {}
+    }
+
+    return false;
+  }
+
+  private injectFallbackChartLine(label: string, color: string) {
+    const chartNode = document.querySelector<HTMLElement>([
+      '.tv-lightweight-charts',
+      '[class*="tradingview"]',
+      '[class*="TradingView"]',
+      '[class*="chart"]',
+      '[id*="chart"]',
+      'iframe[src*="tradingview"]',
+      'iframe[src*="dexscreener"]',
+    ].join(','));
+    const host = (chartNode instanceof HTMLIFrameElement ? chartNode.parentElement : chartNode) ?? document.body;
+    const computed = window.getComputedStyle(host);
+    if (computed.position === 'static') host.style.position = 'relative';
+
+    let overlay = host.querySelector<HTMLElement>('[data-paperape-fill-overlay="true"]');
+    if (!overlay) {
+      overlay = document.createElement('div');
+      overlay.dataset.paperapeFillOverlay = 'true';
+      overlay.style.cssText = 'position:absolute;inset:0;pointer-events:none;z-index:2147483646;overflow:hidden;';
+      host.appendChild(overlay);
+    }
+
+    const count = overlay.querySelectorAll('[data-paperape-fill-line="true"]').length;
+    const top = 28 + ((count * 13) % 52);
+    const line = document.createElement('div');
+    line.dataset.paperapeFillLine = 'true';
+    line.style.cssText = `position:absolute;left:0;right:0;top:${top}%;border-top:2px dashed ${color};opacity:0.9;`;
+
+    const pill = document.createElement('div');
+    pill.textContent = label;
+    pill.style.cssText = `position:absolute;left:8px;top:-24px;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;background:rgba(26,22,18,0.94);color:#fff;border:1px solid ${color};border-left:5px solid ${color};border-radius:5px;padding:4px 7px;font:700 10px/1.1 monospace;box-shadow:0 4px 14px rgba(0,0,0,0.25);`;
+    line.appendChild(pill);
+    overlay.appendChild(line);
   }
 
   destroy() {

@@ -19,11 +19,32 @@ const app = express();
 const port = parseInt(process.env.PORT ?? '3001', 10);
 
 // ─── Middleware ──────────────────────────────────────────
-const corsOrigins = (process.env.CORS_ORIGINS ?? 'http://localhost:3000,https://paperape.vercel.app,https://paper-ape.vercel.app,https://paperape.com,https://www.paperape.com')
+const corsOrigins = (process.env.CORS_ORIGINS ?? [
+  'http://localhost:3000',
+  'http://localhost:3002',
+  'http://localhost:3003',
+  'http://127.0.0.1:3000',
+  'http://127.0.0.1:3002',
+  'http://127.0.0.1:3003',
+  'https://paperape.vercel.app',
+  'https://paper-ape.vercel.app',
+  'https://paperape.com',
+  'https://www.paperape.com',
+].join(','))
   .split(',')
-  .map((s) => s.trim());
+  .map((s) => s.trim())
+  .filter(Boolean);
 
-app.use(cors({ origin: corsOrigins, credentials: true }));
+app.use(cors({
+  origin(origin, callback) {
+    if (!origin || corsOrigins.includes(origin)) {
+      callback(null, true);
+      return;
+    }
+    callback(new Error(`Origin ${origin} is not allowed by CORS`));
+  },
+  credentials: true,
+}));
 app.use(express.json());
 
 // ─── Rate Limiting (300 req/min per IP — Redis-backed) ──

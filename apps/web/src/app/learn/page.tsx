@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import AppShell from '@/components/AppShell';
 import { useAuth } from '@/components/AuthContext';
+import { useLoginHref } from '@/components/AuthGate';
 import { apiRequest } from '@/lib/api';
 import { CURRICULUM, getAllLessons, getTotalReward, type Lesson, type Category } from '@/lib/curriculum';
 import LessonRenderer from '@/components/LessonRenderer';
@@ -15,49 +16,36 @@ const ICON_MAP: Record<string, React.ComponentType<React.SVGProps<SVGSVGElement>
 
 export default function AcademyPage() {
   const { token: authToken } = useAuth();
+  const loginHref = useLoginHref();
   const [openCats, setOpenCats] = useState<string[]>([CURRICULUM[0].id]);
   const [selLesson, setSelLesson] = useState<string | null>(null);
   const [done, setDone] = useState<Set<string>>(new Set());
   const [claimLoading, setClaimLoading] = useState(false);
+  const [notice, setNotice] = useState('');
 
   // Load progress from API (or localStorage fallback)
   useEffect(() => {
-    if (authToken) {
-      apiRequest('GET', '/academy/progress', undefined, authToken).then(r => {
-        if (r.success && r.data?.completed_lessons) {
-          setDone(new Set(r.data.completed_lessons));
-        }
-      }).catch(() => {
-        // Fallback to localStorage
-        const s = localStorage.getItem('pa-academy');
-        if (s) try { setDone(new Set(JSON.parse(s))); } catch {}
-      });
-    } else {
-      const s = localStorage.getItem('pa-academy');
-      if (s) try { setDone(new Set(JSON.parse(s))); } catch {}
-    }
+    if (!authToken) return;
+    apiRequest('GET', '/academy/progress', undefined, authToken).then(r => {
+      if (r.success && r.data?.completed_lessons) {
+        setDone(new Set(r.data.completed_lessons));
+      }
+    }).catch(() => {});
   }, [authToken]);
 
   const toggleCat = (id: string) => setOpenCats(p => p.includes(id) ? p.filter(c => c !== id) : [...p, id]);
 
   const claimReward = useCallback(async (lessonId: string) => {
     if (done.has(lessonId)) return;
+    if (!authToken) {
+      setNotice('Sign in to save Academy progress and claim paper SOL rewards.');
+      return;
+    }
     setClaimLoading(true);
 
-    if (authToken) {
-      const r = await apiRequest('POST', '/academy/claim-reward', { lesson_id: lessonId }, authToken);
-      if (r.success && r.data?.completed_lessons) {
-        setDone(new Set(r.data.completed_lessons));
-        localStorage.setItem('pa-academy', JSON.stringify(r.data.completed_lessons));
-      }
-    } else {
-      // Offline mode — save to localStorage
-      setDone(prev => {
-        const n = new Set(prev);
-        n.add(lessonId);
-        localStorage.setItem('pa-academy', JSON.stringify([...n]));
-        return n;
-      });
+    const r = await apiRequest('POST', '/academy/claim-reward', { lesson_id: lessonId }, authToken);
+    if (r.success && r.data?.completed_lessons) {
+      setDone(new Set(r.data.completed_lessons));
     }
 
     setClaimLoading(false);
@@ -83,6 +71,16 @@ export default function AcademyPage() {
           <span className="mono" style={{ fontSize: 11, color: 'var(--accent-l)', fontWeight: 700 }}>+{earnedReward}/{totalReward} SOL earned</span>
         </div>
       </div>
+
+      {!authToken && (
+        <div className="card an an1" style={{ marginBottom: 14, padding: 14, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, borderStyle: 'dashed' }}>
+          <div style={{ fontSize: 12, color: 'var(--t2)' }}>
+            Academy lessons are public. Sign in to save progress and claim paper SOL rewards.
+            {notice && <span style={{ color: 'var(--gold)', marginLeft: 6 }}>{notice}</span>}
+          </div>
+          <a className="btn primary haptic" href={loginHref} style={{ padding: '7px 14px', fontSize: 11, fontWeight: 700, flexShrink: 0 }}>Sign in</a>
+        </div>
+      )}
 
       {/* Progress bar */}
       <div className="card an an1" style={{ marginBottom: 14 }}>

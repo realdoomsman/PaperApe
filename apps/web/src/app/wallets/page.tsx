@@ -2,6 +2,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import AppShell from '@/components/AppShell';
 import { useAuth } from '@/components/AuthContext';
+import { AuthRequiredPanel } from '@/components/AuthGate';
 import { apiRequest } from '@/lib/api';
 
 interface PaperWallet {
@@ -32,7 +33,7 @@ interface WalletTrade {
 }
 
 export default function WalletsPage() {
-  const { token: authToken } = useAuth();
+  const { token: authToken, loading: authLoading } = useAuth();
   const [mainTab, setMainTab] = useState<'wallets' | 'tracker'>('wallets');
   const [wallets, setWallets] = useState<PaperWallet[]>([]);
   const [copied, setCopied] = useState<string | null>(null);
@@ -106,7 +107,7 @@ export default function WalletsPage() {
     if (!transferFrom || !transferTo || !transferAmt) return;
     setTransferLoading(true);
     const amt = parseFloat(transferAmt);
-    const r = await apiRequest('POST', '/wallets/transfer', { from_wallet_id: transferFrom, to_wallet_id: transferTo, amount: amt }, authToken || undefined);
+    const r = await apiRequest('POST', '/wallets/transfer', { fromId: transferFrom, toId: transferTo, amount: amt }, authToken || undefined);
     setTransferLoading(false);
     if (r.success && r.data) {
       setWallets(p => p.map(w => {
@@ -168,6 +169,23 @@ export default function WalletsPage() {
     if (d < 86400000) return `${Math.floor(d / 3600000)}h ago`;
     return `${Math.floor(d / 86400000)}d ago`;
   };
+
+  if (!authLoading && !authToken) {
+    return (
+      <AppShell balance={100}>
+        <div className="page-head an">
+          <div>
+            <h1>{mainTab === 'wallets' ? 'Multi-Wallet Sandbox' : 'Smart Money Tracker'}</h1>
+            <div className="page-head-sub">Explore the tools, then sign in to mutate paper wallets or track addresses</div>
+          </div>
+        </div>
+        <AuthRequiredPanel
+          title="Sign in to manage wallets"
+          body="Wallet creation, transfers, balance resets, funding, and smart-money tracking are tied to your simulated account."
+        />
+      </AppShell>
+    );
+  }
 
   return (
     <AppShell balance={total}>

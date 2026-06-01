@@ -4,6 +4,7 @@ import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import AppShell from '@/components/AppShell';
 import { useAuth } from '@/components/AuthContext';
+import { useLoginHref } from '@/components/AuthGate';
 import { useMode } from '@/components/ModeContext';
 import { apiRequest } from '@/lib/api';
 import { CURRICULUM, getAllLessons } from '@/lib/curriculum';
@@ -66,6 +67,7 @@ function fmtVol(n: number): string {
 export default function DashboardPage() {
   const { mode } = useMode();
   const { user, token: authToken } = useAuth();
+  const loginHref = useLoginHref();
   const [balance, setBalance] = useState(100);
   const [positions, setPositions] = useState<any[]>([]);
   const [trades, setTrades] = useState<any[]>([]);
@@ -124,7 +126,8 @@ export default function DashboardPage() {
 
   const totalPnl = positions.reduce((s: number, p: any) => s + parseFloat(String(p.pnl_sol ?? p.pnl ?? 0)), 0);
   const winRate = trades.length > 0 ? Math.round((trades.filter((t: any) => parseFloat(String(t.pnl_sol ?? t.pnl ?? 0)) > 0).length / trades.length) * 100) : 0;
-  const displayName = user?.displayName || user?.email?.split('@')[0] || 'Trader';
+  const isAuthed = !!authToken;
+  const displayName = user?.displayName || user?.email?.split('@')[0] || 'explorer';
 
   // Calculate trading streak
   const streak = (() => {
@@ -183,27 +186,39 @@ export default function DashboardPage() {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
             <h1 style={{ fontSize: 26, fontWeight: 800, color: 'var(--t0)', letterSpacing: -0.5 }}>
-              Welcome back, <span style={{ color: 'var(--green)' }}>{displayName}</span>
+              {isAuthed ? 'Welcome back' : 'Welcome'}, <span style={{ color: 'var(--green)' }}>{displayName}</span>
             </h1>
             <p style={{ fontSize: 13, color: 'var(--t3)', marginTop: 4 }}>
-              {mode === 'beginner'
-                ? 'Your paper trading dashboard. No real money -- learn to trade risk-free.'
-                : `Portfolio overview. ${positions.length} open positions.`}
+              {!isAuthed
+                ? 'Browse public markets and lessons. Sign in when you are ready to save simulated trades.'
+                : mode === 'beginner'
+                  ? 'Your paper trading dashboard. No real money -- learn to trade risk-free.'
+                  : `Portfolio overview. ${positions.length} open positions.`}
             </p>
           </div>
           <button className="btn haptic" style={{ background: 'linear-gradient(135deg, rgba(0,255,136,0.08), rgba(59,130,246,0.08))', border: '1px solid rgba(0,255,136,0.1)', color: 'var(--green)', fontWeight: 700, fontSize: 12 }}
-            onClick={() => setShowFlex(true)}>
-            Share / Flex
+            onClick={() => isAuthed ? setShowFlex(true) : window.location.href = loginHref}>
+            {isAuthed ? 'Share / Flex' : 'Sign in'}
           </button>
         </div>
       </div>
+
+      {!isAuthed && (
+        <div className="card an an1" style={{ marginBottom: 14, padding: 16, borderStyle: 'dashed', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--t0)', marginBottom: 3 }}>Public preview</div>
+            <div style={{ fontSize: 12, color: 'var(--t2)' }}>The dashboard is showing sample-empty account stats. Saved balances, positions, history, and analytics unlock after sign-in.</div>
+          </div>
+          <Link href={loginHref} className="btn primary haptic" style={{ padding: '8px 16px', fontSize: 12, fontWeight: 700, flexShrink: 0 }}>Sign in to trade</Link>
+        </div>
+      )}
 
       {/* Stats Strip */}
       <div className="stats-row an an1">
         <div className="stat-card" style={{ borderColor: 'rgba(0,255,136,0.08)' }}>
           <div className="stat-label">Portfolio Value</div>
           <div className="stat-val mono">{balance.toFixed(mode === 'pro' ? 4 : 2)} <span style={{ fontSize: 12, color: 'var(--t3)' }}>SOL</span></div>
-          <div className="stat-sub">Starting: 100.00 SOL</div>
+          <div className="stat-sub">{isAuthed ? 'Starting: 100.00 SOL' : 'Sample balance'}</div>
         </div>
         <div className="stat-card">
           <div className="stat-label">Total PnL</div>

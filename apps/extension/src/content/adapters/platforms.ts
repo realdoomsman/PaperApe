@@ -1,12 +1,71 @@
 import { BaseAdapter } from './base';
-import type { HostStyles } from './types';
+import { SOLANA_ADDRESS_REGEX, type HostStyles } from './types';
+
+function firstSolanaAddress(value?: string | null): string | null {
+  if (!value) return null;
+  const decoded = (() => {
+    try { return decodeURIComponent(value); } catch { return value; }
+  })();
+  return decoded.match(SOLANA_ADDRESS_REGEX)?.[0] ?? null;
+}
+
+function addressFromUrl(patterns: RegExp[] = []): string | null {
+  const url = new URL(window.location.href);
+  const knownParams = ['address', 'token', 'mint', 'ca', 'contract', 'baseMint', 'base'];
+
+  for (const param of knownParams) {
+    const found = firstSolanaAddress(url.searchParams.get(param));
+    if (found) return found;
+  }
+
+  for (const pattern of patterns) {
+    const match = `${url.pathname}${url.hash}`.match(pattern);
+    if (match?.[1]) return match[1];
+  }
+
+  return firstSolanaAddress(window.location.href);
+}
+
+function addressFromDom(): string | null {
+  const candidates = document.querySelectorAll<HTMLElement>([
+    '[data-address]',
+    '[data-token-address]',
+    '[data-token]',
+    '[data-mint]',
+    '[data-ca]',
+    'a[href*="/token/"]',
+    'a[href*="/trade/"]',
+    'a[href*="/meme/"]',
+    'a[href*="/lp/"]',
+  ].join(','));
+
+  for (const el of Array.from(candidates).slice(0, 120)) {
+    const found = firstSolanaAddress(
+      el.dataset.address ??
+      el.dataset.tokenAddress ??
+      el.dataset.token ??
+      el.dataset.mint ??
+      el.dataset.ca ??
+      el.getAttribute('href') ??
+      el.textContent,
+    );
+    if (found) return found;
+  }
+
+  return null;
+}
+
+function extractAddress(patterns: RegExp[] = []): string | null {
+  return addressFromUrl(patterns) ?? addressFromDom();
+}
 
 export class BullXAdapter extends BaseAdapter {
   readonly platformName = 'BullX';
 
   extractTokenAddress(): string | null {
-    const url = new URL(window.location.href);
-    return url.searchParams.get('address');
+    return extractAddress([
+      /\/(?:terminal|token|trade|pair)\/([1-9A-HJ-NP-Za-km-z]{32,44})/,
+    ]);
   }
 
   getPositionTableSelector(): string {
@@ -28,8 +87,9 @@ export class PadreAdapter extends BaseAdapter {
   readonly platformName = 'Padre';
 
   extractTokenAddress(): string | null {
-    const match = window.location.pathname.match(/\/token\/([1-9A-HJ-NP-Za-km-z]{32,44})/);
-    return match ? match[1] : null;
+    return extractAddress([
+      /\/(?:token|trade|pair|chart)\/([1-9A-HJ-NP-Za-km-z]{32,44})/,
+    ]);
   }
 
   getPositionTableSelector(): string {
@@ -51,10 +111,9 @@ export class PhotonAdapter extends BaseAdapter {
   readonly platformName = 'Photon';
 
   extractTokenAddress(): string | null {
-    const pathMatch = window.location.pathname.match(/\/lp\/([1-9A-HJ-NP-Za-km-z]{32,44})/);
-    if (pathMatch) return pathMatch[1];
-    const hashMatch = window.location.hash.match(/([1-9A-HJ-NP-Za-km-z]{32,44})/);
-    return hashMatch ? hashMatch[1] : null;
+    return extractAddress([
+      /\/(?:lp|token|trade)\/([1-9A-HJ-NP-Za-km-z]{32,44})/,
+    ]);
   }
 
   getPositionTableSelector(): string {
@@ -76,8 +135,9 @@ export class AxiomAdapter extends BaseAdapter {
   readonly platformName = 'Axiom';
 
   extractTokenAddress(): string | null {
-    const match = window.location.pathname.match(/\/(?:t|token|meme|pulse|trade)\/([1-9A-HJ-NP-Za-km-z]{32,44})/);
-    return match ? match[1] : null;
+    return extractAddress([
+      /\/(?:t|token|meme|pulse|trade|pair)\/([1-9A-HJ-NP-Za-km-z]{32,44})/,
+    ]);
   }
 
   getPositionTableSelector(): string {
@@ -99,8 +159,9 @@ export class GMGNAdapter extends BaseAdapter {
   readonly platformName = 'GMGN';
 
   extractTokenAddress(): string | null {
-    const match = window.location.pathname.match(/\/sol\/token\/([1-9A-HJ-NP-Za-km-z]{32,44})/);
-    return match ? match[1] : null;
+    return extractAddress([
+      /\/(?:sol\/)?(?:token|trade|pair)\/([1-9A-HJ-NP-Za-km-z]{32,44})/,
+    ]);
   }
 
   getPositionTableSelector(): string {

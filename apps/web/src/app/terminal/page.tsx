@@ -1,11 +1,14 @@
 'use client';
-import { useState, useEffect, useCallback, Suspense } from 'react';
+import { useState, useEffect, useCallback, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import AppShell from '@/components/AppShell';
-import PaperChart from '@/components/PaperChart';
+import PaperChart, { type ChartTradeMarker } from '@/components/PaperChart';
 import { useAuth } from '@/components/AuthContext';
+import { useLoginHref } from '@/components/AuthGate';
 import { useMode } from '@/components/ModeContext';
 import { apiRequest } from '@/lib/api';
+import { getApiBase, getWebSocketBase } from '@/lib/config';
+import { toUiAlert, toUiDCAOrder, type UiDCAOrder, type UiPriceAlert } from '@/lib/mappers';
 import { symbolToAddress, genId } from '@/lib/engine';
 
 // Extended position with token address for live price tracking
@@ -46,13 +49,41 @@ interface LiveTokenData {
   socials?: { twitter?: string; telegram?: string; website?: string; discord?: string };
 }
 
+function normalizeAddress(address?: string | null) {
+  return String(address ?? '').trim().toLowerCase();
+}
+
+function markerFromTrade(
+  trade: any,
+  fallback?: { address?: string; symbol?: string; priceUsd?: number; marketCapUsd?: number },
+): ChartTradeMarker | null {
+  const type = trade?.trade_type;
+  if (type !== 'buy' && type !== 'sell' && type !== 'sell_init') return null;
+  const priceUsd = Number(trade.price_usd ?? fallback?.priceUsd ?? 0);
+  if (!Number.isFinite(priceUsd) || priceUsd <= 0) return null;
+  const marketCapUsd = Number(trade.market_cap_usd ?? fallback?.marketCapUsd ?? 0);
+  const amountSol = Number(trade.amount_sol ?? 0);
+
+  return {
+    id: String(trade.id ?? `${type}-${trade.created_at ?? Date.now()}`),
+    type,
+    tokenAddress: trade.token_address ?? fallback?.address,
+    tokenSymbol: trade.token_symbol ?? fallback?.symbol,
+    priceUsd,
+    marketCapUsd: Number.isFinite(marketCapUsd) && marketCapUsd > 0 ? marketCapUsd : undefined,
+    amountSol: Number.isFinite(amountSol) && amountSol > 0 ? amountSol : undefined,
+    createdAt: trade.created_at,
+  };
+}
+
 export default function TerminalPage() {
   return <Suspense fallback={<div style={{ minHeight: '100vh', background: 'var(--bg-0)' }} />}><TerminalInner /></Suspense>;
 }
 
 function TerminalInner() {
   const { mode } = useMode();
-  const { token: authToken } = useAuth();
+  const { token: authToken, loading: authLoading } = useAuth();
+  const loginHref = useLoginHref();
   const searchParams = useSearchParams();
 
   const initToken = searchParams.get('token') || '';
@@ -73,8 +104,9 @@ function TerminalInner() {
   const [slippage, setSlippage] = useState(15);
   const [balance, setBalance] = useState(100);
   const [positions, setPositions] = useState<Position[]>([]);
+  const [tradeMarkers, setTradeMarkers] = useState<ChartTradeMarker[]>([]);
   const [toasts, setToasts] = useState<{ id: number; msg: string; type: string; createdAt: number }[]>([]);
-  let toastIdRef = 0;
+  const toastIdRef = useRef(0);
   const [loading, setLoading] = useState(false);
   const [sellPercent, setSellPercent] = useState(100);
   const [priority, setPriority] = useState<'normal' | 'turbo' | 'yolo'>('normal');
@@ -83,17 +115,15 @@ function TerminalInner() {
   const [showShortcuts, setShowShortcuts] = useState(false);
 
   // DCA state
-  interface DCAOrder { id: string; tokenSymbol: string; amountPerBuy: number; intervalMs: number; totalBuys: number; executedBuys: number; totalSpent: number; status: string; nextBuyAt: number; }
   const [dcaAmount, setDcaAmount] = useState('0.5');
   const [dcaInterval, setDcaInterval] = useState('1h');
   const [dcaTotalBuys, setDcaTotalBuys] = useState('10');
-  const [dcaOrders, setDcaOrders] = useState<DCAOrder[]>([]);
+  const [dcaOrders, setDcaOrders] = useState<UiDCAOrder[]>([]);
   const [dcaLoading, setDcaLoading] = useState(false);
 
   // Price Alerts state
-  interface PriceAlert { id: string; tokenSymbol: string; tokenAddress: string; targetPrice: number; direction: 'above' | 'below'; }
   const [showAlerts, setShowAlerts] = useState(false);
-  const [alerts, setAlerts] = useState<PriceAlert[]>([]);
+  const [alerts, setAlerts] = useState<UiPriceAlert[]>([]);
   const [alertPrice, setAlertPrice] = useState('');
   const [alertDir, setAlertDir] = useState<'above' | 'below'>('above');
 
@@ -101,7 +131,7 @@ function TerminalInner() {
   useEffect(() => {
     if (!authToken) return;
     apiRequest('GET', '/alerts', undefined, authToken).then(r => {
-      if (r.success && r.data?.alerts) setAlerts(r.data.alerts);
+      if (r.success && r.data?.alerts) setAlerts(r.data.alerts.map(toUiAlert));
     }).catch(() => {});
   }, [authToken]);
 
@@ -109,7 +139,25 @@ function TerminalInner() {
   useEffect(() => {
     if (!authToken) return;
     apiRequest('GET', '/trades/dca', undefined, authToken).then(r => {
-      if (r.success && r.data?.orders) setDcaOrders(r.data.orders);
+      if (r.success && r.data?.orders) setDcaOrders(r.data.orders.map(toUiDCAOrder));
+    }).catch(() => {});
+  }, [authToken]);
+
+  // Hydrate chart fill markers from saved buy/sell history.
+  useEffect(() => {
+    if (!authToken) {
+      setTradeMarkers([]);
+      return;
+    }
+    apiRequest('GET', '/trades/history', undefined, authToken).then(r => {
+      if (r.success && r.data?.trades) {
+        const markers = r.data.trades
+          .map((trade: any) => markerFromTrade(trade))
+          .filter((marker: ChartTradeMarker | null): marker is ChartTradeMarker => !!marker)
+          .reverse()
+          .slice(-80);
+        setTradeMarkers(markers);
+      }
     }).catch(() => {});
   }, [authToken]);
 
@@ -124,7 +172,7 @@ function TerminalInner() {
       apiRequest('GET', '/tokens/sol-price').then(r => {
         if (r.success && r.data?.price) setSolPrice(r.data.price);
       }).catch(() => {});
-      fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/health`)
+      fetch(`${getApiBase()}/health`)
         .then(r => r.json())
         .then(r => { if (r.network?.congestion) setCongestion(r.network.congestion); })
         .catch(() => {});
@@ -174,7 +222,7 @@ function TerminalInner() {
   useEffect(() => {
     if (!tokenAddress) return;
 
-    const wsUrl = (process.env.NEXT_PUBLIC_API_URL ?? 'https://paperapepaperape-api.onrender.com').replace(/^http/, 'ws') + '/ws';
+    const wsUrl = `${getWebSocketBase()}/ws`;
     let ws: WebSocket | null = null;
     let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
     let alive = true;
@@ -374,7 +422,7 @@ function TerminalInner() {
   }, []);
 
   const showToast = useCallback((msg: string, type: string) => {
-    const id = ++toastIdRef;
+    const id = ++toastIdRef.current;
     setToasts(prev => [...prev.slice(-4), { id, msg, type, createdAt: Date.now() }]); // max 5
     playTradeSound(type);
     setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 4000);
@@ -432,11 +480,30 @@ function TerminalInner() {
 
   const estTokens = displayPriceSol > 0 ? parseFloat(amount || '0') / displayPriceSol : 0;
 
+  const addTradeMarker = useCallback((trade: any) => {
+    const marker = markerFromTrade(trade, {
+      address: effectiveAddress,
+      symbol: displaySymbol,
+      priceUsd: displayPrice,
+      marketCapUsd: displayMcap,
+    });
+    if (!marker) return;
+    setTradeMarkers(prev => {
+      const next = [...prev.filter(m => m.id !== marker.id), marker]
+        .sort((a, b) => new Date(a.createdAt ?? 0).getTime() - new Date(b.createdAt ?? 0).getTime());
+      return next.slice(-80);
+    });
+  }, [displayMcap, displayPrice, displaySymbol, effectiveAddress]);
+
   // ─── Trade Execution ─────────────────────────────────
   // Trade confirmation state
   const [showConfirm, setShowConfirm] = useState(false);
 
   const requestTrade = () => {
+    if (!isAuthed) {
+      signInForAction(tab === 'buy' ? 'paper trading' : 'selling');
+      return;
+    }
     const amt = parseFloat(amount);
     if (!amt || amt <= 0) return;
     // Require confirmation for large trades (>10 SOL or >10% of balance)
@@ -448,6 +515,11 @@ function TerminalInner() {
   };
 
   const executeTrade = async () => {
+    if (!isAuthed) {
+      setShowConfirm(false);
+      signInForAction('paper trading');
+      return;
+    }
     setShowConfirm(false);
     const amt = parseFloat(amount);
     if (!amt || amt <= 0) return;
@@ -465,6 +537,8 @@ function TerminalInner() {
         const investedSol = parseFloat(apiPos.amount_sol) || amt;
         const tokensHeld = parseFloat(apiPos.tokens_remaining) || 0;
         const currentPriceSol = parseFloat(apiPos.current_price) || displayPriceSol;
+        const entryPriceUsd = parseFloat(apiPos.entry_price_usd) || Number(apiTrade?.price_usd) || displayPrice;
+        const currentPriceUsd = parseFloat(apiPos.current_price_usd) || Number(apiTrade?.price_usd) || displayPrice;
         const currentVal = tokensHeld * currentPriceSol;
         const pnlVal = currentVal - investedSol;
         const pnlPct = investedSol > 0 ? (pnlVal / investedSol) * 100 : 0;
@@ -475,11 +549,11 @@ function TerminalInner() {
           tokenAddress: effectiveAddress,
           image: apiPos.token_image || liveData?.image || null,
           entryPrice: parseFloat(apiPos.entry_price) || displayPriceSol,
-          entryPriceUsd: displayPrice,
+          entryPriceUsd,
           amount: investedSol,
           tokens: tokensHeld,
           currentPrice: currentPriceSol,
-          currentPriceUsd: displayPrice,
+          currentPriceUsd,
           currentValue: currentVal,
           pnl: pnlVal,
           pnlPercent: pnlPct,
@@ -491,6 +565,7 @@ function TerminalInner() {
           if (existing >= 0) { const u = [...prev]; u[existing] = newPos; return u; }
           return [...prev, newPos];
         });
+        addTradeMarker(apiTrade);
         showToast(`Bought ${(apiTrade.amount_tokens || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })} ${displaySymbol}`, 'buy');
         window.dispatchEvent(new CustomEvent('pa:notification', { detail: { title: `Bought ${displaySymbol}`, message: `${(apiTrade.amount_tokens || 0).toLocaleString()} tokens for ${amount} SOL`, type: 'trade' } }));
       } else {
@@ -500,7 +575,7 @@ function TerminalInner() {
           position_id: pos.id, percentage: sellPercent,
         }, authToken || undefined);
         if (!res.success) { showToast(res.error || 'Sell failed', 'error'); setLoading(false); return; }
-        const { position: apiPos, sol_received } = res.data as any;
+        const { position: apiPos, sol_received, trade: apiTrade } = res.data as any;
         apiRequest('GET', '/auth/me', undefined, authToken || undefined).then(r => {
           if (r.success && r.data?.user) setBalance(parseFloat(r.data.user.paper_balance ?? 0));
         });
@@ -509,9 +584,11 @@ function TerminalInner() {
         } else {
           setPositions(prev => prev.map(p => p.id === pos.id ? {
             ...p, tokens: apiPos.tokens_remaining, amount: apiPos.amount_sol,
-            currentPrice: apiPos.current_price, pnl: apiPos.pnl_sol || 0, pnlPercent: apiPos.pnl_percent || 0,
+            currentPrice: apiPos.current_price, currentPriceUsd: apiPos.current_price_usd || apiTrade?.price_usd || displayPrice,
+            pnl: apiPos.pnl_sol || 0, pnlPercent: apiPos.pnl_percent || 0,
           } : p));
         }
+        addTradeMarker(apiTrade);
         showToast(`Sold ${displaySymbol} for ${(sol_received || 0).toFixed(4)} SOL`, 'sell');
         window.dispatchEvent(new CustomEvent('pa:notification', { detail: { title: `Sold ${displaySymbol}`, message: `Received ${(sol_received || 0).toFixed(4)} SOL`, type: 'trade' } }));
       }
@@ -522,19 +599,29 @@ function TerminalInner() {
   };
 
   const doSellInit = async (posId: string) => {
+    if (!isAuthed) {
+      signInForAction('sell-init');
+      return;
+    }
     try {
       const res = await apiRequest('POST', '/trades/sell-init', { position_id: posId }, authToken || undefined);
       if (!res.success) { showToast(res.error || 'Sell Init failed', 'error'); return; }
-      const { position: apiPos, sol_received, moon_bag_tokens } = res.data as any;
+      const { position: apiPos, sol_received, moon_bag_tokens, trade: apiTrade } = res.data as any;
       apiRequest('GET', '/auth/me', undefined, authToken || undefined).then(r => {
         if (r.success && r.data?.user) setBalance(parseFloat(r.data.user.paper_balance ?? 0));
       });
-      setPositions(prev => prev.map(p => p.id === posId ? { ...p, tokens: moon_bag_tokens, isMoonBag: true, amount: 0, currentPrice: apiPos.current_price } : p));
+      setPositions(prev => prev.map(p => p.id === posId ? { ...p, tokens: moon_bag_tokens, isMoonBag: true, amount: 0, currentPrice: apiPos.current_price, currentPriceUsd: apiPos.current_price_usd || apiTrade?.price_usd || displayPrice } : p));
+      addTradeMarker(apiTrade);
       showToast(`Init recovered: ${(sol_received || 0).toFixed(4)} SOL`, 'buy');
     } catch (err: any) { showToast(err.message || 'Sell Init failed', 'error'); }
   };
 
   const curPos = positions.find(p => p.tokenAddress === effectiveAddress || p.symbol === displaySymbol);
+  const currentTradeMarkers = tradeMarkers.filter(marker => {
+    const markerAddress = normalizeAddress(marker.tokenAddress);
+    if (markerAddress && effectiveAddress) return markerAddress === normalizeAddress(effectiveAddress);
+    return marker.tokenSymbol === displaySymbol;
+  });
 
   // Total portfolio PnL
   const totalPnl = positions.reduce((s, p) => s + p.pnl, 0);
@@ -555,6 +642,11 @@ function TerminalInner() {
   };
 
   const PRO_PRESETS = [0.1, 0.5, 1, 2, 5, 10, 25];
+  const isAuthed = !!authToken;
+  const signInForAction = useCallback((feature: string) => {
+    showToast(`Sign in to use ${feature}`, 'info');
+    window.location.href = loginHref;
+  }, [loginHref, showToast]);
 
   return (
     <AppShell balance={balance}>
@@ -809,6 +901,7 @@ function TerminalInner() {
                   entryPrice={curPos?.entryPriceUsd}
                   currentPrice={curPos?.currentPriceUsd || liveData?.priceUsd}
                   positionSize={curPos?.amount}
+                  tradeMarkers={currentTradeMarkers}
                 />
               </div>
             )}
@@ -866,15 +959,21 @@ function TerminalInner() {
                     <button onClick={() => setAlertDir(alertDir === 'above' ? 'below' : 'above')} className={`preset on`} style={{ padding: '5px 10px', fontSize: 9, minWidth: 50 }}>
                       {alertDir === 'above' ? '↑ Above' : '↓ Below'}
                     </button>
-                    <button className="btn primary haptic" style={{ padding: '5px 12px', fontSize: 9 }} onClick={async () => {
+                    <button className="btn primary haptic" disabled={authLoading || !alertPrice} style={{ padding: '5px 12px', fontSize: 9 }} onClick={async () => {
+                      if (!isAuthed) { signInForAction('price alerts'); return; }
                       if (!alertPrice || !authToken) return;
-                      const r = await apiRequest('POST', '/alerts', { tokenAddress: effectiveAddress, tokenSymbol: displaySymbol, targetPrice: alertPrice, direction: alertDir }, authToken);
+                      const r = await apiRequest('POST', '/alerts', {
+                        token_address: effectiveAddress,
+                        token_symbol: displaySymbol,
+                        target_price: parseFloat(alertPrice),
+                        condition: alertDir,
+                      }, authToken);
                       if (r.success && r.data?.alert) {
-                        setAlerts(prev => [...prev, r.data.alert]);
+                        setAlerts(prev => [...prev, toUiAlert(r.data.alert)]);
                         setAlertPrice('');
                         showToast(`Alert set: ${displaySymbol} ${alertDir} $${alertPrice}`, 'info');
                       }
-                    }}>Set</button>
+                    }}>{isAuthed ? 'Set' : 'Sign in'}</button>
                   </div>
                   {alerts.filter(a => a.tokenAddress === effectiveAddress).length > 0 && (
                     <div style={{ fontSize: 10 }}>
@@ -883,7 +982,8 @@ function TerminalInner() {
                           <span className="mono" style={{ color: a.direction === 'above' ? 'var(--green)' : 'var(--red)' }}>
                             {a.direction === 'above' ? '↑' : '↓'} ${a.targetPrice < 0.01 ? a.targetPrice.toExponential(2) : a.targetPrice.toFixed(4)}
                           </span>
-                          <button onClick={async () => {
+                          <button disabled={!isAuthed} onClick={async () => {
+                            if (!isAuthed) { signInForAction('price alerts'); return; }
                             await apiRequest('DELETE', `/alerts/${a.id}`, undefined, authToken || undefined);
                             setAlerts(prev => prev.filter(x => x.id !== a.id));
                           }} className="haptic" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 10, color: 'var(--t3)', padding: 2 }}>×</button>
@@ -1065,6 +1165,12 @@ function TerminalInner() {
             <div className="card-pad">
               <div className="card-title" style={{ marginBottom: 14 }}>{tab === 'buy' ? `Buy ${displaySymbol}` : `Sell ${displaySymbol}`}</div>
 
+              {!isAuthed && (
+                <div style={{ padding: '10px 12px', background: 'var(--accent-bg)', border: '1px dashed var(--accent-glow)', borderRadius: 8, marginBottom: 12, fontSize: 11, color: 'var(--t2)', lineHeight: 1.5 }}>
+                  Public preview mode. Sign in to place simulated trades, alerts, DCA orders, and auto triggers.
+                </div>
+              )}
+
               {curPos && (
                 <div style={{ padding: '10px 12px', background: curPos.pnlPercent >= 0 ? 'var(--green-bg)' : 'var(--red-bg)', border: `2px dashed ${curPos.pnlPercent >= 0 ? 'var(--green)' : 'var(--red)'}`, borderRadius: 4, marginBottom: 12 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
@@ -1144,8 +1250,8 @@ function TerminalInner() {
                       {isFinite(estTokens) && estTokens > 0 ? estTokens.toLocaleString(undefined, { maximumFractionDigits: 0 }) : '0'} <span style={{ fontSize: 11, color: 'var(--t3)' }}>{displaySymbol}</span>
                     </div>
                   </div>
-                  <button className="btn primary lg haptic" style={{ width: '100%', justifyContent: 'center', borderRadius: 12 }} onClick={requestTrade} disabled={loading}>
-                    {loading ? 'Executing...' : `Buy ${displaySymbol}`}
+                  <button className="btn primary lg haptic" style={{ width: '100%', justifyContent: 'center', borderRadius: 12 }} onClick={isAuthed ? requestTrade : () => signInForAction('paper trading')} disabled={loading || authLoading}>
+                    {authLoading ? 'Checking...' : !isAuthed ? 'Sign in to buy' : loading ? 'Executing...' : `Buy ${displaySymbol}`}
                   </button>
                 </>
               )}
@@ -1162,13 +1268,13 @@ function TerminalInner() {
                           <button key={v} className={`preset haptic ${sellPercent === v ? 'on' : ''}`} onClick={() => setSellPercent(v)} style={{ flex: 1, fontSize: 11, fontWeight: 700 }}>{v}%</button>
                         ))}
                       </div>
-                      <button className="btn danger lg haptic" style={{ width: '100%', justifyContent: 'center', borderRadius: 12, background: 'var(--red)', color: '#fff', border: 'none' }} onClick={requestTrade} disabled={loading}>
-                        {loading ? 'Executing...' : `Sell ${displaySymbol}`}
+                      <button className="btn danger lg haptic" style={{ width: '100%', justifyContent: 'center', borderRadius: 12, background: 'var(--red)', color: '#fff', border: 'none' }} onClick={isAuthed ? requestTrade : () => signInForAction('selling')} disabled={loading || authLoading}>
+                        {authLoading ? 'Checking...' : !isAuthed ? 'Sign in to sell' : loading ? 'Executing...' : `Sell ${displaySymbol}`}
                       </button>
                       {!curPos.isMoonBag && (
                         <button className="btn haptic" style={{ width: '100%', justifyContent: 'center', marginTop: 8, borderRadius: 12, color: 'var(--gold)', background: 'var(--gold-bg)', border: '1px solid var(--gold)' }}
-                          onClick={() => doSellInit(curPos.id)}>
-                          Sell Init (Recover {curPos.amount.toFixed(2)} SOL)
+                          onClick={isAuthed ? () => doSellInit(curPos.id) : () => signInForAction('sell-init')}>
+                          {isAuthed ? `Sell Init (Recover ${curPos.amount.toFixed(2)} SOL)` : 'Sign in to sell-init'}
                         </button>
                       )}
 
@@ -1180,6 +1286,7 @@ function TerminalInner() {
                           {[50, 100, 200, 500, 1000].map(v => (
                             <button key={v} className="preset haptic" style={{ flex: 1, fontSize: 9, fontWeight: 700, color: 'var(--green)' }}
                               onClick={async () => {
+                                if (!isAuthed) { signInForAction('auto triggers'); return; }
                                 const res = await apiRequest('POST', '/trades/auto-orders', {
                                   position_id: curPos.id, type: 'tp', trigger_percent: v,
                                   sell_percent: 100, token_address: curPos.tokenAddress, entry_price: curPos.entryPrice,
@@ -1196,6 +1303,7 @@ function TerminalInner() {
                           {[-10, -25, -50, -75].map(v => (
                             <button key={v} className="preset haptic" style={{ flex: 1, fontSize: 9, fontWeight: 700, color: 'var(--red)' }}
                               onClick={async () => {
+                                if (!isAuthed) { signInForAction('auto triggers'); return; }
                                 const res = await apiRequest('POST', '/trades/auto-orders', {
                                   position_id: curPos.id, type: 'sl', trigger_percent: v,
                                   sell_percent: 100, token_address: curPos.tokenAddress, entry_price: curPos.entryPrice,
@@ -1263,27 +1371,27 @@ function TerminalInner() {
                     </div>
                   </div>
 
-                  <button className="btn primary lg haptic" disabled={dcaLoading} style={{ width: '100%', justifyContent: 'center', borderRadius: 12, background: 'var(--cyan)', border: 'none', color: '#fff' }}
+                  <button className="btn primary lg haptic" disabled={dcaLoading || authLoading} style={{ width: '100%', justifyContent: 'center', borderRadius: 12, background: 'var(--cyan)', border: 'none', color: '#fff' }}
                     onClick={async () => {
+                      if (!isAuthed) { signInForAction('DCA orders'); return; }
                       setDcaLoading(true);
                       try {
-                        const intervals: Record<string, number> = { '1m': 60000, '5m': 300000, '15m': 900000, '1h': 3600000, '4h': 14400000, '1d': 86400000 };
                         const res = await apiRequest('POST', '/trades/dca', {
                           token_address: effectiveAddress, token_symbol: displaySymbol, amount_per_buy: parseFloat(dcaAmount),
-                          interval_ms: intervals[dcaInterval] || 3600000, total_buys: parseInt(dcaTotalBuys),
+                          interval: dcaInterval, total_buys: parseInt(dcaTotalBuys), slippage,
                         }, authToken || undefined);
                         if (res.success) {
                           showToast(`DCA started: ${dcaTotalBuys} buys of ${dcaAmount} SOL`, 'buy');
                           // Refresh DCA orders
                           const r2 = await apiRequest('GET', '/trades/dca', undefined, authToken || undefined);
-                          if (r2.success && r2.data?.orders) setDcaOrders(r2.data.orders);
+                          if (r2.success && r2.data?.orders) setDcaOrders(r2.data.orders.map(toUiDCAOrder));
                         } else {
                           showToast(res.error || 'DCA creation failed', 'error');
                         }
                       } catch (err: any) { showToast(err.message || 'DCA failed', 'error'); }
                       setDcaLoading(false);
                     }}>
-                    {dcaLoading ? 'Starting...' : `Start DCA — ${displaySymbol}`}
+                    {authLoading ? 'Checking...' : !isAuthed ? 'Sign in to start DCA' : dcaLoading ? 'Starting...' : `Start DCA — ${displaySymbol}`}
                   </button>
 
                   {/* Active DCA Orders */}
@@ -1291,7 +1399,7 @@ function TerminalInner() {
                     <div style={{ marginTop: 14 }}>
                       <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--t3)', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 8 }}>Active DCA Orders</div>
                       {dcaOrders.map(order => {
-                        const pct = order.totalBuys > 0 ? (order.executedBuys / order.totalBuys) * 100 : 0;
+                        const pct = order.totalBuys > 0 ? (order.completedBuys / order.totalBuys) * 100 : 0;
                         return (
                           <div key={order.id} style={{ padding: '10px 12px', background: 'var(--bg-2)', borderRadius: 6, marginBottom: 6, border: '1px solid var(--border-0)' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
@@ -1305,26 +1413,28 @@ function TerminalInner() {
                               <div style={{ height: '100%', width: `${pct}%`, background: 'var(--cyan)', borderRadius: 2, transition: 'width 0.3s' }} />
                             </div>
                             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, color: 'var(--t3)' }}>
-                              <span className="mono">{order.executedBuys}/{order.totalBuys} buys</span>
+                              <span className="mono">{order.completedBuys}/{order.totalBuys} buys</span>
                               <span className="mono">{order.amountPerBuy} SOL each</span>
                               <span className="mono">{order.totalSpent?.toFixed(2) || '0'} spent</span>
                             </div>
                             {order.status !== 'completed' && (
                               <div style={{ display: 'flex', gap: 4, marginTop: 6 }}>
-                                <button className="preset haptic" style={{ flex: 1, fontSize: 9, color: 'var(--gold)' }}
+                                <button className="preset haptic" disabled={!isAuthed} style={{ flex: 1, fontSize: 9, color: 'var(--gold)' }}
                                   onClick={async () => {
+                                    if (!isAuthed) { signInForAction('DCA orders'); return; }
                                     await apiRequest('POST', `/trades/dca/${order.id}/pause`, undefined, authToken || undefined);
                                     const r2 = await apiRequest('GET', '/trades/dca', undefined, authToken || undefined);
-                                    if (r2.success && r2.data?.orders) setDcaOrders(r2.data.orders);
+                                    if (r2.success && r2.data?.orders) setDcaOrders(r2.data.orders.map(toUiDCAOrder));
                                     showToast(order.status === 'active' ? 'DCA paused' : 'DCA resumed', 'buy');
                                   }}>
                                   {order.status === 'active' ? '⏸ Pause' : '▶ Resume'}
                                 </button>
-                                <button className="preset haptic" style={{ flex: 1, fontSize: 9, color: 'var(--red)' }}
+                                <button className="preset haptic" disabled={!isAuthed} style={{ flex: 1, fontSize: 9, color: 'var(--red)' }}
                                   onClick={async () => {
+                                    if (!isAuthed) { signInForAction('DCA orders'); return; }
                                     await apiRequest('DELETE', `/trades/dca/${order.id}`, undefined, authToken || undefined);
                                     const r2 = await apiRequest('GET', '/trades/dca', undefined, authToken || undefined);
-                                    if (r2.success && r2.data?.orders) setDcaOrders(r2.data.orders);
+                                    if (r2.success && r2.data?.orders) setDcaOrders(r2.data.orders.map(toUiDCAOrder));
                                     showToast('DCA cancelled', 'sell');
                                   }}>
                                   ✕ Cancel

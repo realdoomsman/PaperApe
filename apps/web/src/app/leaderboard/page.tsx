@@ -12,6 +12,7 @@ const TIERS = [
   { min: 5, label: 'Gold' },
   { min: 0, label: 'Silver' },
 ];
+const SKELETON_WIDTHS = [82, 104, 96, 116, 88, 108, 94, 112];
 function getTier(pnl: number) { return (TIERS.find(t => pnl >= t.min) ?? TIERS[TIERS.length - 1]).label; }
 
 export default function LeaderboardPage() {
@@ -90,7 +91,7 @@ export default function LeaderboardPage() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <div className="skeleton" style={{ width: 26, height: 26, borderRadius: '50%' }} />
                   <div>
-                    <div className="skeleton skel-text" style={{ width: 80 + Math.random() * 40 }} />
+                    <div className="skeleton skel-text" style={{ width: SKELETON_WIDTHS[i % SKELETON_WIDTHS.length] }} />
                     <div className="skeleton skel-text short" style={{ width: 40 }} />
                   </div>
                 </div>

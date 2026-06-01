@@ -30,6 +30,38 @@ export interface TokenMeta {
   holder_count?: number | null;
 }
 
+export interface TokenMarketData {
+  address: string;
+  symbol: string;
+  name: string;
+  priceUsd: number;
+  priceSol: number;
+  priceChange24h: number;
+  volume24h: number;
+  liquidity: number;
+  liquidityUsd?: number;
+  marketCap: number;
+  market_cap_usd?: number;
+  pairAddress?: string | null;
+  dex?: string;
+  image: string | null;
+  createdAt?: string | null;
+  ageMinutes?: number;
+  txns?: {
+    buys?: number;
+    sells?: number;
+    m5?: { buys: number; sells: number };
+    h1?: { buys: number; sells: number };
+    h24?: { buys: number; sells: number };
+  };
+  socials?: {
+    twitter?: string;
+    telegram?: string;
+    website?: string;
+    discord?: string;
+  };
+}
+
 // ─── Position ───────────────────────────────────────────
 export type PositionStatus = 'open' | 'closed' | 'rugged';
 
@@ -41,11 +73,14 @@ export interface Position {
   token_name: string;
   token_image: string | null;
   entry_price: number;       // price per token in SOL at buy time
+  entry_price_usd?: number;   // USD price per token at entry
   amount_sol: number;         // SOL invested
   tokens_bought: number;      // total tokens received
   tokens_remaining: number;   // tokens still held
   current_price: number;      // live price per token in SOL
+  current_price_usd?: number; // live price per token in USD
   current_value: number;      // tokens_remaining * current_price
+  realized_pnl_sol?: number;  // realized PnL from partial/closed sells
   pnl_sol: number;            // realized + unrealized PnL in SOL
   pnl_percent: number;
   is_moon_bag: boolean;
@@ -63,12 +98,20 @@ export interface Trade {
   user_id: string;
   position_id: string;
   trade_type: TradeType;
+  token_address?: string;
+  token_symbol?: string;
+  token_name?: string;
+  token_image?: string | null;
   amount_sol: number;
   amount_tokens: number;
   execution_price: number;    // actual price after slippage
   market_price: number;       // price before slippage
+  price_usd?: number;         // USD price per token at execution
+  market_cap_usd?: number;    // market cap at execution, when available
   slippage_applied: number;   // percentage
   fee_applied: number;        // SOL
+  priority_fee?: number;      // SOL
+  realized_pnl_sol?: number;  // SOL realized by this sell-like trade
   created_at: string;
 }
 
@@ -103,10 +146,90 @@ export interface SellInitRequest {
   position_id: string;
 }
 
+export type AutoOrderType = 'tp' | 'sl' | 'trailing_sl';
+
+export interface CreateAutoOrderRequest {
+  position_id: string;
+  type: AutoOrderType;
+  trigger_percent: number;
+  sell_percent?: number;
+  token_address: string;
+  entry_price: number;
+}
+
+export type DCAInterval = '1m' | '5m' | '15m' | '1h' | '4h' | '1d';
+
+export interface CreateDCAOrderRequest {
+  token_address: string;
+  token_symbol: string;
+  amount_per_buy: number;
+  interval: DCAInterval;
+  total_buys: number;
+  slippage?: number;
+}
+
+export interface DCAOrder {
+  id: string;
+  user_id: string;
+  token_address: string;
+  token_symbol: string;
+  amount_per_buy: number;
+  interval: DCAInterval;
+  total_buys: number;
+  completed_buys: number;
+  slippage: number;
+  status: 'active' | 'paused' | 'completed' | 'cancelled';
+  next_buy_at: number;
+  created_at: string;
+  last_buy_at?: string;
+}
+
+export interface CreateAlertRequest {
+  token_address: string;
+  token_symbol?: string;
+  condition: 'above' | 'below';
+  target_price: number;
+  note?: string;
+}
+
+export interface PriceAlert {
+  id: string;
+  user_id: string;
+  token_address: string;
+  token_symbol: string;
+  condition: 'above' | 'below';
+  target_price: number;
+  note?: string;
+  status: 'active' | 'triggered' | 'cancelled';
+  created_at: string;
+  triggered_at?: string;
+}
+
+export interface WalletTransferRequest {
+  fromId: string;
+  toId: string;
+  amount: number;
+}
+
+export interface TokenSearchResponse {
+  tokens: TokenMarketData[];
+}
+
+export interface TokenDetailResponse {
+  token: TokenMarketData;
+  metadata: Partial<TokenMeta> | null;
+  txns: {
+    m5: { buys: number; sells: number };
+    h1: { buys: number; sells: number };
+    h24: { buys: number; sells: number };
+  };
+}
+
 export interface ApiResponse<T> {
   success: boolean;
   data?: T;
   error?: string;
+  status?: number;
 }
 
 // ─── WebSocket Events ───────────────────────────────────

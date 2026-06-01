@@ -18,13 +18,19 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [info, setInfo] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [returnTo, setReturnTo] = useState('/dashboard');
+
+  useEffect(() => {
+    const target = new URLSearchParams(window.location.search).get('returnTo');
+    if (target?.startsWith('/') && !target.startsWith('//')) setReturnTo(target);
+  }, []);
 
   // If already logged in, redirect
   useEffect(() => {
     if (!loading && user) {
-      router.push('/dashboard');
+      router.push(returnTo);
     }
-  }, [loading, user, router]);
+  }, [loading, user, router, returnTo]);
 
   if (!loading && user) return null;
 
@@ -56,7 +62,7 @@ export default function LoginPage() {
       } else {
         await loginWithEmail(email, password);
       }
-      router.push('/dashboard');
+      router.push(returnTo);
     } catch (err: any) {
       const code = err.code || '';
       const msg = code === 'auth/user-not-found' ? 'No account found with that email'
@@ -77,7 +83,7 @@ export default function LoginPage() {
     setInfo('');
     try {
       await loginWithGoogle();
-      router.push('/dashboard');
+      router.push(returnTo);
     } catch (err: any) {
       if (err.code !== 'auth/popup-closed-by-user') {
         setError(err.message || 'Google sign-in failed');

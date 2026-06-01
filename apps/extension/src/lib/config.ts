@@ -1,15 +1,18 @@
 /** Environment-aware configuration */
+const DEFAULT_API_BASE = 'https://paperape-api.onrender.com';
+const DEFAULT_WEBAPP_URL = 'https://paperape.com';
+
 export async function getConfig() {
   try {
     const stored = await chrome.storage.local.get(['api_base', 'webapp_url']);
     return {
-      API_BASE: stored.api_base || 'http://localhost:3001',
-      WEBAPP_URL: stored.webapp_url || 'http://localhost:3000',
+      API_BASE: stored.api_base || DEFAULT_API_BASE,
+      WEBAPP_URL: stored.webapp_url || DEFAULT_WEBAPP_URL,
     };
   } catch {
     return {
-      API_BASE: 'http://localhost:3001',
-      WEBAPP_URL: 'http://localhost:3000',
+      API_BASE: DEFAULT_API_BASE,
+      WEBAPP_URL: DEFAULT_WEBAPP_URL,
     };
   }
 }

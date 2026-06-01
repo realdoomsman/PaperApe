@@ -73,6 +73,7 @@ const IconFilter = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="n
 const IconNew = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>;
 const IconRocket = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/></svg>;
 const IconCheck = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>;
+const SKELETON_WIDTHS = [84, 108, 96, 116, 90, 104];
 
 export default function DiscoverPage() {
   const { mode } = useMode();
@@ -202,7 +203,7 @@ export default function DiscoverPage() {
       </div>
 
       {/* Main tabs */}
-      <div style={{ display: 'flex', gap: 4, marginBottom: 14, alignItems: 'center' }} className="an an1">
+      <div style={{ display: 'flex', gap: 4, marginBottom: 14, alignItems: 'center', flexWrap: 'wrap' }} className="an an1">
         <button onClick={() => setTab('trending')} className={`preset ${tab === 'trending' ? 'on' : ''}`} style={{ padding: '7px 16px', fontSize: 11, display: 'flex', alignItems: 'center', gap: 5 }}>
           <IconFire /> Trending
         </button>
@@ -212,9 +213,9 @@ export default function DiscoverPage() {
         <button onClick={() => setTab('watchlist')} className={`preset ${tab === 'watchlist' ? 'on' : ''}`} style={{ padding: '7px 16px', fontSize: 11, display: 'flex', alignItems: 'center', gap: 5, color: tab === 'watchlist' ? 'var(--gold)' : undefined }}>
           ⭐ Watchlist{watchlist.size > 0 && <span style={{ fontSize: 9, background: 'var(--gold-bg)', color: 'var(--gold)', padding: '1px 5px', borderRadius: 8, fontWeight: 700 }}>{watchlist.size}</span>}
         </button>
-        <div style={{ flex: 1 }} />
+        <div style={{ flex: '1 1 40px' }} />
         {/* Auto-refresh toggle */}
-        <div style={{ display: 'flex', gap: 3, alignItems: 'center', marginRight: 6 }}>
+        <div style={{ display: 'flex', gap: 3, alignItems: 'center', marginRight: 6, flexWrap: 'wrap' }}>
           {autoRefresh > 0 && <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--green)', animation: 'pulse 1.5s infinite' }} />}
           {[0, 10000, 30000].map(v => (
             <button key={v} onClick={() => setAutoRefresh(v)} className={`preset ${autoRefresh === v ? 'on' : ''}`} style={{ padding: '4px 8px', fontSize: 9 }}>
@@ -223,7 +224,7 @@ export default function DiscoverPage() {
           ))}
         </div>
         {tab === 'trending' && (
-          <div style={{ display: 'flex', gap: 3 }}>
+          <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
             {([['volume', 'Vol'], ['mcap', 'MCap'], ['change', '24h'], ['new', 'New']] as const).map(([k, l]) => (
               <button key={k} onClick={() => setSortBy(k)} className={`preset ${sortBy === k ? 'on' : ''}`} style={{ padding: '5px 10px', fontSize: 10 }}>{l}</button>
             ))}
@@ -242,7 +243,7 @@ export default function DiscoverPage() {
             <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderBottom: '1px solid var(--border-0)' }}>
               <div className="skeleton" style={{ width: 32, height: 32, borderRadius: '50%' }} />
               <div style={{ flex: 1 }}>
-                <div className="skeleton skel-text" style={{ width: 80 + Math.random() * 40 }} />
+                <div className="skeleton skel-text" style={{ width: SKELETON_WIDTHS[i % SKELETON_WIDTHS.length] }} />
                 <div className="skeleton skel-text short" style={{ width: 50 }} />
               </div>
               <div className="skeleton skel-text" style={{ width: 50 }} />
@@ -252,7 +253,7 @@ export default function DiscoverPage() {
         </div>
       ) : tab === 'watchlist' ? (
         /* ═══ WATCHLIST TABLE ═══ */
-        <div className="card an an2">
+        <div className="card an an2" style={{ overflowX: 'auto' }}>
           {watchlistTokens.length === 0 ? (
             <div style={{ padding: '50px 20px', textAlign: 'center' }}>
               <div style={{ fontSize: 24, marginBottom: 8 }}>⭐</div>
@@ -260,7 +261,7 @@ export default function DiscoverPage() {
               <div style={{ fontSize: 11, color: 'var(--t3)' }}>Star tokens from Trending or Trenches to add them here</div>
             </div>
           ) : (
-            <table className="tbl">
+            <table className="tbl" style={{ minWidth: 620 }}>
               <thead><tr><th>Token</th><th>MCap</th><th>Price</th><th>24h</th><th>Vol</th><th></th></tr></thead>
               <tbody>
                 {watchlistTokens.map((t, i) => (
@@ -289,8 +290,8 @@ export default function DiscoverPage() {
         </div>
       ) : tab === 'trending' ? (
         /* ═══ TRENDING TABLE ═══ */
-        <div className="card an an2">
-          <table className="tbl">
+        <div className="card an an2" style={{ overflowX: 'auto' }}>
+          <table className="tbl" style={{ minWidth: 700 }}>
             <thead>
               <tr><th>Token</th><th>MCap</th><th>Price</th><th>24h</th><th>Volume</th><th>Liq</th><th></th></tr>
             </thead>
@@ -415,7 +416,7 @@ export default function DiscoverPage() {
           )}
 
           {/* Three Column Grid */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 260px), 1fr))', gap: 10 }}>
             {/* New Pairs */}
             <TrenchColumn
               title="New Pairs"

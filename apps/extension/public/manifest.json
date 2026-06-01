@@ -25,6 +25,7 @@
         "*://*.bullx.io/*",
         "*://*.bullx.com/*",
         "*://*.padre.market/*",
+        "*://*.padre.gg/*",
         "*://*.photon-sol.tinyastro.io/*",
         "*://*.photon.tinyastro.io/*",
         "*://*.axiom.trade/*",
@@ -36,6 +37,10 @@
     {
       "matches": [
         "http://localhost:3000/*",
+        "http://localhost:3002/*",
+        "http://localhost:3003/*",
+        "https://paperape.vercel.app/*",
+        "https://paper-ape.vercel.app/*",
         "https://*.paperape.io/*",
         "https://*.paperape.com/*"
       ],
@@ -50,13 +55,19 @@
   "host_permissions": [
     "http://localhost:3001/*",
     "http://localhost:3000/*",
+    "http://localhost:3002/*",
+    "http://localhost:3003/*",
+    "https://paperape-api.onrender.com/*",
     "*://*.bullx.io/*",
     "*://*.bullx.com/*",
     "*://*.padre.market/*",
+    "*://*.padre.gg/*",
     "*://*.photon-sol.tinyastro.io/*",
     "*://*.photon.tinyastro.io/*",
     "*://*.axiom.trade/*",
     "*://*.gmgn.ai/*",
+    "https://paperape.vercel.app/*",
+    "https://paper-ape.vercel.app/*",
     "*://*.paperape.io/*",
     "*://*.paperape.com/*"
   ],
