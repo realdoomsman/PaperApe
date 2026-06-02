@@ -16,6 +16,8 @@ services:
         value: "10000"
       - key: CORS_ORIGINS
         value: "https://paperape.vercel.app,https://paperape.com,https://www.paperape.com,https://paperape.fun,https://www.paperape.fun"
+      - key: MOCK_MODE
+        value: "false"
       # Firebase (REQUIRED)
       - key: FIREBASE_PROJECT_ID
         sync: false
@@ -23,13 +25,15 @@ services:
         sync: false
       - key: FIREBASE_PRIVATE_KEY
         sync: false
-      # Helius RPC — $49/mo (https://dev.helius.xyz)
+      # Helius RPC (https://dev.helius.xyz)
       - key: HELIUS_API_KEY
         sync: false
-      # Birdeye Pro — $49/mo (https://birdeye.so/api)
+      - key: HELIUS_RPC_URL
+        sync: false
+      # Birdeye (https://birdeye.so/api)
       - key: BIRDEYE_API_KEY
         sync: false
-      # Upstash Redis — ~$10/mo (https://upstash.com)
+      # Upstash Redis (https://upstash.com)
       - key: UPSTASH_REDIS_REST_URL
         sync: false
       - key: UPSTASH_REDIS_REST_TOKEN
