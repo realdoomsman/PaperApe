@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import AppShell from '@/components/AppShell';
-import PaperChart, { type ChartTradeMarker } from '@/components/PaperChart';
+import PaperChart from '@/components/PaperChart';
 import { useAuth } from '@/components/AuthContext';
 import { useLoginHref } from '@/components/AuthGate';
 import { useMode } from '@/components/ModeContext';
@@ -50,32 +50,6 @@ interface LiveTokenData {
   socials?: { twitter?: string; telegram?: string; website?: string; discord?: string };
 }
 
-function normalizeAddress(address?: string | null) {
-  return String(address ?? '').trim().toLowerCase();
-}
-
-function markerFromTrade(
-  trade: any,
-  fallback?: { address?: string; symbol?: string; priceUsd?: number; marketCapUsd?: number },
-): ChartTradeMarker | null {
-  const type = trade?.trade_type;
-  if (type !== 'buy' && type !== 'sell' && type !== 'sell_init') return null;
-  const priceUsd = Number(trade.price_usd ?? fallback?.priceUsd ?? 0);
-  if (!Number.isFinite(priceUsd) || priceUsd <= 0) return null;
-  const marketCapUsd = Number(trade.market_cap_usd ?? fallback?.marketCapUsd ?? 0);
-  const amountSol = Number(trade.amount_sol ?? 0);
-
-  return {
-    id: String(trade.id ?? `${type}-${trade.created_at ?? Date.now()}`),
-    type,
-    tokenAddress: trade.token_address ?? fallback?.address,
-    tokenSymbol: trade.token_symbol ?? fallback?.symbol,
-    priceUsd,
-    marketCapUsd: Number.isFinite(marketCapUsd) && marketCapUsd > 0 ? marketCapUsd : undefined,
-    amountSol: Number.isFinite(amountSol) && amountSol > 0 ? amountSol : undefined,
-    createdAt: trade.created_at,
-  };
-}
 
 export default function TerminalPage() {
   return <Suspense fallback={<div style={{ minHeight: '100vh', background: 'var(--bg-0)' }} />}><TerminalInner /></Suspense>;
@@ -103,9 +77,8 @@ function TerminalInner() {
   const [tab, setTab] = useState<'buy' | 'sell' | 'dca'>('buy');
   const [amount, setAmount] = useState('1');
   const [slippage, setSlippage] = useState(15);
-  const [balance, setBalance] = useState(100);
+  const [balance, setBalance] = useState<number | null>(null);
   const [positions, setPositions] = useState<Position[]>([]);
-  const [tradeMarkers, setTradeMarkers] = useState<ChartTradeMarker[]>([]);
   const [toasts, setToasts] = useState<{ id: number; msg: string; type: string; createdAt: number }[]>([]);
   const toastIdRef = useRef(0);
   const [loading, setLoading] = useState(false);
@@ -141,24 +114,6 @@ function TerminalInner() {
     if (!authToken) return;
     apiRequest('GET', '/trades/dca', undefined, authToken).then(r => {
       if (r.success && r.data?.orders) setDcaOrders(r.data.orders.map(toUiDCAOrder));
-    }).catch(() => {});
-  }, [authToken]);
-
-  // Hydrate chart fill markers from saved buy/sell history.
-  useEffect(() => {
-    if (!authToken) {
-      setTradeMarkers([]);
-      return;
-    }
-    apiRequest('GET', '/trades/history', undefined, authToken).then(r => {
-      if (r.success && r.data?.trades) {
-        const markers = r.data.trades
-          .map((trade: any) => markerFromTrade(trade))
-          .filter((marker: ChartTradeMarker | null): marker is ChartTradeMarker => !!marker)
-          .reverse()
-          .slice(-80);
-        setTradeMarkers(markers);
-      }
     }).catch(() => {});
   }, [authToken]);
 
@@ -485,20 +440,7 @@ function TerminalInner() {
 
   const estTokens = displayPriceSol > 0 ? parseFloat(amount || '0') / displayPriceSol : 0;
 
-  const addTradeMarker = useCallback((trade: any) => {
-    const marker = markerFromTrade(trade, {
-      address: effectiveAddress,
-      symbol: displaySymbol,
-      priceUsd: displayPrice,
-      marketCapUsd: displayMcap,
-    });
-    if (!marker) return;
-    setTradeMarkers(prev => {
-      const next = [...prev.filter(m => m.id !== marker.id), marker]
-        .sort((a, b) => new Date(a.createdAt ?? 0).getTime() - new Date(b.createdAt ?? 0).getTime());
-      return next.slice(-80);
-    });
-  }, [displayMcap, displayPrice, displaySymbol, effectiveAddress]);
+  const displayBalance = balance ?? 100;
 
   // ─── Trade Execution ─────────────────────────────────
   // Trade confirmation state
@@ -512,7 +454,7 @@ function TerminalInner() {
     const amt = parseFloat(amount);
     if (!amt || amt <= 0) return;
     // Require confirmation for large trades (>10 SOL or >10% of balance)
-    if (tab === 'buy' && (amt > 10 || amt > balance * 0.1)) {
+    if (tab === 'buy' && (amt > 10 || amt > displayBalance * 0.1)) {
       setShowConfirm(true);
       return;
     }
@@ -571,7 +513,7 @@ function TerminalInner() {
           if (existing >= 0) { const u = [...prev]; u[existing] = newPos; return u; }
           return [...prev, newPos];
         });
-        addTradeMarker(apiTrade);
+
         showToast(`Bought ${(apiTrade.amount_tokens || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })} ${displaySymbol}`, 'buy');
         window.dispatchEvent(new CustomEvent('pa:notification', { detail: { title: `Bought ${displaySymbol}`, message: `${(apiTrade.amount_tokens || 0).toLocaleString()} tokens for ${amount} SOL`, type: 'trade' } }));
       } else {
@@ -594,7 +536,7 @@ function TerminalInner() {
             pnl: apiPos.pnl_sol || 0, pnlPercent: apiPos.pnl_percent || 0,
           } : p));
         }
-        addTradeMarker(apiTrade);
+
         showToast(`Sold ${displaySymbol} for ${(sol_received || 0).toFixed(4)} SOL`, 'sell');
         window.dispatchEvent(new CustomEvent('pa:notification', { detail: { title: `Sold ${displaySymbol}`, message: `Received ${(sol_received || 0).toFixed(4)} SOL`, type: 'trade' } }));
       }
@@ -617,17 +559,12 @@ function TerminalInner() {
         if (r.success && r.data?.user) setBalance(parseFloat(r.data.user.paper_balance ?? 0));
       });
       setPositions(prev => prev.map(p => p.id === posId ? { ...p, tokens: moon_bag_tokens, isMoonBag: true, amount: 0, currentPrice: apiPos.current_price, currentPriceUsd: apiPos.current_price_usd || apiTrade?.price_usd || displayPrice } : p));
-      addTradeMarker(apiTrade);
+
       showToast(`Init recovered: ${(sol_received || 0).toFixed(4)} SOL`, 'buy');
     } catch (err: any) { showToast(err.message || 'Sell Init failed', 'error'); }
   };
 
   const curPos = positions.find(p => p.tokenAddress === effectiveAddress || p.symbol === displaySymbol);
-  const currentTradeMarkers = tradeMarkers.filter(marker => {
-    const markerAddress = normalizeAddress(marker.tokenAddress);
-    if (markerAddress && effectiveAddress) return markerAddress === normalizeAddress(effectiveAddress);
-    return marker.tokenSymbol === displaySymbol;
-  });
 
   // Total portfolio PnL
   const totalPnl = positions.reduce((s, p) => s + p.pnl, 0);
@@ -655,7 +592,7 @@ function TerminalInner() {
   }, [loginHref, showToast]);
 
   return (
-    <AppShell balance={balance}>
+    <AppShell balance={displayBalance}>
       {/* Stackable Toasts */}
       {toasts.length > 0 && (
         <div style={{ position: 'fixed', top: 16, right: 16, zIndex: 9999, display: 'flex', flexDirection: 'column', gap: 6, maxWidth: 340 }}>
@@ -728,7 +665,7 @@ function TerminalInner() {
               </div>
             </div>
             <div style={{ padding: '8px 12px', background: 'rgba(255,179,0,0.06)', border: '1px solid var(--gold)', borderRadius: 6, marginBottom: 18, fontSize: 11, color: 'var(--gold)' }}>
-              This trade is {parseFloat(amount) > 10 ? `${amount} SOL — a large order` : `${((parseFloat(amount) / balance) * 100).toFixed(0)}% of your balance`}. Please confirm.
+              This trade is {parseFloat(amount) > 10 ? `${amount} SOL — a large order` : `${((parseFloat(amount) / displayBalance) * 100).toFixed(0)}% of your balance`}. Please confirm.
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
               <button className="btn haptic" style={{ flex: 1, padding: '10px 0', borderRadius: 10, fontSize: 12 }} onClick={() => setShowConfirm(false)}>Cancel</button>
@@ -791,7 +728,7 @@ function TerminalInner() {
           <h1>Terminal</h1>
           <div className="page-head-sub">Paper trade any Solana token with advanced mechanics</div>
         </div>
-        <div className="nav-bal"><span className="mono" style={{ color: 'var(--green)' }}>{balance.toFixed(4)}</span> SOL</div>
+        <div className="nav-bal"><span className="mono" style={{ color: 'var(--green)' }}>{displayBalance.toFixed(4)}</span> SOL</div>
       </div>
 
       {/* Token Picker */}
@@ -904,10 +841,6 @@ function TerminalInner() {
                   tokenAddress={effectiveAddress}
                   pairAddress={liveData?.pairAddress}
                   height={420}
-                  entryPrice={curPos?.entryPriceUsd}
-                  currentPrice={curPos?.currentPriceUsd || liveData?.priceUsd}
-                  positionSize={curPos?.amount}
-                  tradeMarkers={currentTradeMarkers}
                 />
               </div>
             )}
@@ -1456,7 +1389,7 @@ function TerminalInner() {
               )}
 
               <div style={{ fontSize: 10, color: 'var(--t3)', textAlign: 'center', marginTop: 10 }}>
-                Paper trading · Balance: {balance.toFixed(2)} SOL
+                Paper trading · Balance: {displayBalance.toFixed(2)} SOL
               </div>
             </div>
           </div>

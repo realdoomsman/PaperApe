@@ -71,12 +71,13 @@ export { onAuthStateChanged, updateProfile, type User };
 
 // ─── Realtime Subscriptions ─────────────────────────────
 export function subscribeToPositions(userId: string, callback: (payload: any) => void) {
-  const q = query(collection(db, 'positions'), where('user_id', '==', userId));
+  // Positions are stored as subcollections: users/{uid}/positions
+  const q = query(collection(db, 'users', userId, 'positions'), where('status', '==', 'open'));
   return onSnapshot(q, (snapshot) => {
     snapshot.docChanges().forEach((change) => {
       callback({
         event: change.type.toUpperCase(),
-        new: change.doc.data(),
+        new: { id: change.doc.id, ...change.doc.data() },
         old: change.type === 'modified' ? snapshot.docs.find(d => d.id === change.doc.id)?.data() : null,
       });
     });
@@ -84,13 +85,14 @@ export function subscribeToPositions(userId: string, callback: (payload: any) =>
 }
 
 export function subscribeToTrades(userId: string, callback: (payload: any) => void) {
-  const q = query(collection(db, 'trades'), where('user_id', '==', userId));
+  // Trades are stored as subcollections: users/{uid}/trades
+  const q = query(collection(db, 'users', userId, 'trades'));
   return onSnapshot(q, (snapshot) => {
     snapshot.docChanges().forEach((change) => {
       if (change.type === 'added') {
         callback({
           event: 'INSERT',
-          new: change.doc.data(),
+          new: { id: change.doc.id, ...change.doc.data() },
         });
       }
     });

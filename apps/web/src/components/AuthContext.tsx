@@ -20,7 +20,7 @@ interface AuthContextType {
   loading: boolean;
   token: string | null;
   emailVerified: boolean;
-  serverBalance: number;
+  serverBalance: number | null;
   serverPositions: any[];
   loginWithGoogle: () => Promise<void>;
   loginWithEmail: (email: string, password: string) => Promise<void>;
@@ -36,7 +36,7 @@ const AuthContext = createContext<AuthContextType>({
   loading: true,
   token: null,
   emailVerified: false,
-  serverBalance: 100,
+  serverBalance: null,
   serverPositions: [],
   loginWithGoogle: async () => {},
   loginWithEmail: async () => {},
@@ -51,7 +51,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [token, setToken] = useState<string | null>(null);
-  const [serverBalance, setServerBalance] = useState(100);
+  const [serverBalance, setServerBalance] = useState<number | null>(null);
   const [serverPositions, setServerPositions] = useState<any[]>([]);
 
   // Broadcast to extension via bridge content script
@@ -101,7 +101,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Syncs balance across web + extension whenever Firestore user doc changes
   useEffect(() => {
     if (!user?.uid) {
-      setServerBalance(100);
+      setServerBalance(null);
       setServerPositions([]);
       return;
     }

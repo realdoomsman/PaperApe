@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import AppShell from '@/components/AppShell';
@@ -68,35 +68,46 @@ export default function DashboardPage() {
   const { mode } = useMode();
   const { user, token: authToken } = useAuth();
   const loginHref = useLoginHref();
-  const [balance, setBalance] = useState(100);
+  const [balance, setBalance] = useState<number | null>(null);
   const [positions, setPositions] = useState<any[]>([]);
   const [trades, setTrades] = useState<any[]>([]);
   const [trendingTokens, setTrendingTokens] = useState<TrendingToken[]>([]);
   const [showFlex, setShowFlex] = useState(false);
   const [completedLessons, setCompletedLessons] = useState<Set<string>>(new Set());
+  const [dataLoading, setDataLoading] = useState(true);
+  const [dataError, setDataError] = useState(false);
 
   // Fetch user data
-  useEffect(() => {
-    if (!authToken) return;
-    // Fetch balance from /auth/me
-    apiRequest('GET', '/auth/me', undefined, authToken).then(r => {
-      if (r.success && r.data?.user) {
-        setBalance(parseFloat(r.data.user.paper_balance ?? 100));
-      }
-    }).catch(() => {});
-    // Fetch positions from correct endpoint
-    apiRequest('GET', '/trades/positions?status=open', undefined, authToken).then(r => {
-      if (r.success && r.data?.positions) {
-        setPositions(r.data.positions);
-      }
-    }).catch(() => {});
-    // Fetch trade history
-    apiRequest('GET', '/trades/history', undefined, authToken).then(r => {
-      if (r.success && r.data?.trades) {
-        setTrades(r.data.trades);
-      }
-    }).catch(() => {});
+  const fetchUserData = useCallback(() => {
+    if (!authToken) { setDataLoading(false); return; }
+    setDataLoading(true);
+    setDataError(false);
+    Promise.all([
+      apiRequest('GET', '/auth/me', undefined, authToken).then(r => {
+        if (r.success && r.data?.user) {
+          setBalance(parseFloat(r.data.user.paper_balance ?? 100));
+        }
+      }),
+      apiRequest('GET', '/trades/positions?status=open', undefined, authToken).then(r => {
+        if (r.success && r.data?.positions) {
+          setPositions(r.data.positions);
+        }
+      }),
+      apiRequest('GET', '/trades/history', undefined, authToken).then(r => {
+        if (r.success && r.data?.trades) {
+          setTrades(r.data.trades);
+        }
+      }),
+    ]).catch(() => {
+      setDataError(true);
+    }).finally(() => {
+      setDataLoading(false);
+    });
   }, [authToken]);
+
+  useEffect(() => {
+    fetchUserData();
+  }, [fetchUserData]);
 
   // Fetch trending tokens from API (real data)
   const [trendingError, setTrendingError] = useState(false);
@@ -124,6 +135,7 @@ export default function DashboardPage() {
     });
   }, [authToken]);
 
+  const displayBalance = balance ?? 100;
   const totalPnl = positions.reduce((s: number, p: any) => s + parseFloat(String(p.pnl_sol ?? p.pnl ?? 0)), 0);
   const winRate = trades.length > 0 ? Math.round((trades.filter((t: any) => parseFloat(String(t.pnl_sol ?? t.pnl ?? 0)) > 0).length / trades.length) * 100) : 0;
   const isAuthed = !!authToken;
@@ -154,7 +166,7 @@ export default function DashboardPage() {
       running += pnl;
       curve.push(running);
     }
-    if (curve.length === 1) curve.push(balance); // at least 2 points
+    if (curve.length === 1) curve.push(displayBalance); // at least 2 points
     return curve;
   })();
 
@@ -168,11 +180,11 @@ export default function DashboardPage() {
   const nextLesson = allLessons.find(l => !completedLessons.has(l.id));
 
   return (
-    <AppShell balance={balance}>
+    <AppShell balance={displayBalance}>
       {showFlex && (
         <ShareCard
           tokenSymbol="PORTFOLIO"
-          pnlPercent={balance > 100 ? ((balance - 100) / 100) * 100 : ((balance - 100) / 100) * 100}
+          pnlPercent={displayBalance > 100 ? ((displayBalance - 100) / 100) * 100 : ((displayBalance - 100) / 100) * 100}
           pnlSol={totalPnl}
           entryPrice={100}
           investedSol={100}
@@ -217,7 +229,7 @@ export default function DashboardPage() {
       <div className="stats-row an an1">
         <div className="stat-card" style={{ borderColor: 'rgba(0,255,136,0.08)' }}>
           <div className="stat-label">Portfolio Value</div>
-          <div className="stat-val mono">{balance.toFixed(mode === 'pro' ? 4 : 2)} <span style={{ fontSize: 12, color: 'var(--t3)' }}>SOL</span></div>
+          <div className="stat-val mono">{dataLoading && balance === null ? <span className="skeleton" style={{ display: 'inline-block', width: 80, height: 20, borderRadius: 4 }} /> : <>{displayBalance.toFixed(mode === 'pro' ? 4 : 2)} <span style={{ fontSize: 12, color: 'var(--t3)' }}>SOL</span></>}</div>
           <div className="stat-sub">{isAuthed ? 'Starting: 100.00 SOL' : 'Sample balance'}</div>
         </div>
         <div className="stat-card">
@@ -244,15 +256,15 @@ export default function DashboardPage() {
         <div className="card" style={{ overflow: 'hidden' }}>
           <div className="card-head">
             <span className="card-title">Portfolio Equity</span>
-            <span className={`mono ${balance >= 100 ? 'up' : 'down'}`} style={{ fontSize: 12, fontWeight: 700 }}>
-              {balance >= 100 ? '+' : ''}{((balance - 100) / 100 * 100).toFixed(1)}%
+            <span className={`mono ${displayBalance >= 100 ? 'up' : 'down'}`} style={{ fontSize: 12, fontWeight: 700 }}>
+              {displayBalance >= 100 ? '+' : ''}{((displayBalance - 100) / 100 * 100).toFixed(1)}%
             </span>
           </div>
           <div style={{ padding: '8px 14px 14px' }}>
-            <Sparkline data={equityCurve} width={500} height={70} color={balance >= 100 ? 'var(--green)' : 'var(--red)'} />
+            <Sparkline data={equityCurve} width={500} height={70} color={displayBalance >= 100 ? 'var(--green)' : 'var(--red)'} />
             <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8, fontSize: 9, color: 'var(--t3)' }}>
               <span>Start: 100 SOL</span>
-              <span className="mono" style={{ fontWeight: 600, color: balance >= 100 ? 'var(--green)' : 'var(--red)' }}>Now: {balance.toFixed(2)} SOL</span>
+              <span className="mono" style={{ fontWeight: 600, color: displayBalance >= 100 ? 'var(--green)' : 'var(--red)' }}>Now: {displayBalance.toFixed(2)} SOL</span>
             </div>
           </div>
         </div>
@@ -310,7 +322,7 @@ export default function DashboardPage() {
                 value: parseFloat(p.amount_sol ?? p.amount ?? 0),
                 color: ALLOC_COLORS[i % ALLOC_COLORS.length],
               }));
-              const cashVal = balance - posAllocations.reduce((s: number, a: any) => s + a.value, 0);
+              const cashVal = displayBalance - posAllocations.reduce((s: number, a: any) => s + a.value, 0);
               const all = [{ label: 'Cash', value: Math.max(0, cashVal), color: 'var(--t3)' }, ...posAllocations];
               const total = all.reduce((s, a) => s + a.value, 0) || 1;
               return (
@@ -514,12 +526,12 @@ export default function DashboardPage() {
               <div className="card-pad">
                 <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--gold)', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 8 }}>Trader Tier</div>
                 <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--t0)', marginBottom: 4 }}>
-                  {balance >= 1000 ? 'HIMOTHY' : balance >= 500 ? 'Diamond Hands' : balance >= 200 ? 'Paper Veteran' : 'Fresh Ape'}
+                  {displayBalance >= 1000 ? 'HIMOTHY' : displayBalance >= 500 ? 'Diamond Hands' : displayBalance >= 200 ? 'Paper Veteran' : 'Fresh Ape'}
                 </div>
                 <div className="mono" style={{ fontSize: 12, color: 'var(--t3)', marginBottom: 12 }}>
-                  {balance.toFixed(2)} / {balance >= 1000 ? '---' : balance >= 500 ? '1000' : balance >= 200 ? '500' : '200'} SOL
+                  {displayBalance.toFixed(2)} / {displayBalance >= 1000 ? '---' : displayBalance >= 500 ? '1000' : displayBalance >= 200 ? '500' : '200'} SOL
                 </div>
-                <div className="stat-bar"><div className="stat-bar-fill" style={{ width: `${Math.min(100, (balance / (balance >= 1000 ? balance : balance >= 500 ? 1000 : balance >= 200 ? 500 : 200)) * 100)}%`, background: 'var(--gold)' }} /></div>
+                <div className="stat-bar"><div className="stat-bar-fill" style={{ width: `${Math.min(100, (displayBalance / (displayBalance >= 1000 ? displayBalance : displayBalance >= 500 ? 1000 : displayBalance >= 200 ? 500 : 200)) * 100)}%`, background: 'var(--gold)' }} /></div>
               </div>
             </div>
           </div>
