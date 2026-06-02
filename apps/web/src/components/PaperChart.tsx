@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useMemo } from 'react';
 
 export interface ChartTradeMarker {
   id: string;
@@ -176,44 +176,59 @@ export default function PaperChart({ pairAddress, tokenAddress, height = 400, en
     .filter(m => Number.isFinite(m.priceUsd) && m.priceUsd > 0)
     .slice(-8);
 
-  // Calculate marker positions against a padded local price range.
   const hasPosition = !!(entryPrice && entryPrice > 0 && currentPrice && currentPrice > 0);
-  const pricePoints = [
-    currentPrice,
-    entryPrice,
-    tp,
-    sl,
-    ...visibleTradeMarkers.map(m => m.priceUsd),
-  ].filter((p): p is number => Number.isFinite(Number(p)) && Number(p) > 0);
-  const anchorPrice = currentPrice && currentPrice > 0
-    ? currentPrice
-    : entryPrice && entryPrice > 0
-      ? entryPrice
-      : visibleTradeMarkers.length > 0
-        ? visibleTradeMarkers[visibleTradeMarkers.length - 1].priceUsd
-        : 0;
 
-  let high = anchorPrice > 0 ? anchorPrice * 1.3 : 1;
-  let low = anchorPrice > 0 ? anchorPrice * 0.7 : 0;
-  if (pricePoints.length > 0) {
-    const minPrice = Math.min(...pricePoints);
-    const maxPrice = Math.max(...pricePoints);
-    const spread = Math.max(maxPrice - minPrice, maxPrice * 0.08);
-    high = Math.max(anchorPrice * 1.3, maxPrice + spread * 0.18);
-    low = Math.max(0, Math.min(anchorPrice * 0.7, minPrice - spread * 0.18));
-    if (high <= low) {
-      high = maxPrice * 1.12;
-      low = minPrice * 0.88;
+  // Stabilize the price range: anchor to entry price (fixed) rather than
+  // current price (volatile) so markers don't jump every tick.
+  const stableAnchor = useMemo(() => {
+    if (entryPrice && entryPrice > 0) return entryPrice;
+    if (visibleTradeMarkers.length > 0) return visibleTradeMarkers[visibleTradeMarkers.length - 1].priceUsd;
+    return 0;
+  // Only recompute when entry price or trade markers list changes (not on every price tick)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [entryPrice, visibleTradeMarkers.length]);
+
+  // Bucket current price to ~2% increments so minor ticks don't recalc the range
+  const priceBucket = currentPrice && currentPrice > 0 ? Math.round(currentPrice * 50) : 0;
+
+  // Build the stable price range from all known fixed price points (entry, tp, sl, trade fills).
+  // Current price is included in bounds but NOT used as the anchor.
+  const { high, low, range } = useMemo(() => {
+    const fixedPoints = [
+      stableAnchor,
+      entryPrice,
+      tp,
+      sl,
+      ...visibleTradeMarkers.map(m => m.priceUsd),
+    ].filter((p): p is number => Number.isFinite(Number(p)) && Number(p) > 0);
+
+    // Include current price in range bounds so the line stays visible
+    const allPoints = [...fixedPoints];
+    if (currentPrice && currentPrice > 0) allPoints.push(currentPrice);
+
+    const anchor = stableAnchor > 0 ? stableAnchor : (currentPrice && currentPrice > 0 ? currentPrice : 1);
+    let h = anchor * 1.3;
+    let l = anchor * 0.7;
+
+    if (allPoints.length > 0) {
+      const minPrice = Math.min(...allPoints);
+      const maxPrice = Math.max(...allPoints);
+      const spread = Math.max(maxPrice - minPrice, maxPrice * 0.12);
+      h = maxPrice + spread * 0.25;
+      l = Math.max(0, minPrice - spread * 0.25);
+      if (h <= l) { h = maxPrice * 1.15; l = minPrice * 0.85; }
     }
-  }
-  const range = Math.max(high - low, Number.EPSILON);
+
+    return { high: h, low: l, range: Math.max(h - l, Number.EPSILON) };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stableAnchor, entryPrice, tp, sl, visibleTradeMarkers.length, priceBucket]);
+
   const priceToPosition = (price: number) => ((high - price) / range) * 100;
 
   let entryPos = 50, tpPos = 20, slPos = 80;
   let pnlPercent = 0;
 
   if (hasPosition) {
-    // Position: 0% = top (high price), 100% = bottom (low price)
     entryPos = priceToPosition(entryPrice);
     pnlPercent = ((currentPrice - entryPrice) / entryPrice) * 100;
 

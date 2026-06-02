@@ -20,13 +20,14 @@ interface Position {
   image: string | null;
   entryPrice: number;     // price per token in SOL at entry
   entryPriceUsd: number;  // USD price at entry
-  amount: number;         // SOL invested
+  amount: number;         // SOL invested (remaining cost basis)
   tokens: number;         // tokens held
   currentPrice: number;   // current price in SOL
   currentPriceUsd: number;
-  pnl: number;            // PnL in SOL
+  pnl: number;            // Total PnL in SOL (realized + unrealized)
   pnlPercent: number;
   currentValue: number;   // current value in SOL
+  realizedPnl: number;    // Realized PnL from partial sells
   isMoonBag: boolean;
   timestamp: number;
 }
@@ -265,8 +266,9 @@ function TerminalInner() {
                 setPositions(prev => prev.map(p => {
                   if (p.tokenAddress !== data.token_address) return p;
                   const currentValue = p.tokens * priceSol;
-                  const pnl = currentValue - p.amount;
-                  const pnlPercent = p.amount > 0 ? (pnl / p.amount) * 100 : 0;
+                  // Include realized PnL from partial sells
+                  const pnl = p.realizedPnl + currentValue - p.amount;
+                  const pnlPercent = p.amount > 0 ? (pnl / p.amount) * 100 : (currentValue > 0 ? 999 : 0);
                   return { ...p, currentPrice: priceSol, currentPriceUsd: priceUsd || p.currentPriceUsd, currentValue, pnl, pnlPercent };
                 }));
               }
@@ -292,8 +294,8 @@ function TerminalInner() {
 
     connect();
 
-    // Also do a full data refresh every 30s for volume/mcap/txns
-    const fullRefresh = setInterval(() => fetchTokenData(tokenAddress), 30000);
+    // Full data refresh for volume/mcap/txns (not prices — WS handles those)
+    const fullRefresh = setInterval(() => fetchTokenData(tokenAddress), 60000);
 
     return () => {
       alive = false;
@@ -327,9 +329,9 @@ function TerminalInner() {
       const newPriceUsd = liveData.priceUsd || 0;
       if (newPriceSol <= 0) return p;
       const currentValue = p.tokens * newPriceSol;
-      const pnl = currentValue - p.amount;
-      // Value-based PnL: (currentValue - invested) / invested * 100
-      const pnlPercent = p.amount > 0 ? (pnl / p.amount) * 100 : 0;
+      // Include realized PnL from partial sells
+      const pnl = p.realizedPnl + currentValue - p.amount;
+      const pnlPercent = p.amount > 0 ? (pnl / p.amount) * 100 : (currentValue > 0 ? 999 : 0);
       return { ...p, currentPrice: newPriceSol, currentPriceUsd: newPriceUsd, currentValue, pnl, pnlPercent };
     }));
   }, [liveData, solPrice, effectiveAddress]);
@@ -368,9 +370,11 @@ function TerminalInner() {
           const currentPrice = parseFloat(p.current_price) || entryPrice;
           const tokens = parseFloat(p.tokens_remaining) || 0;
           const amountSol = parseFloat(p.amount_sol) || 0;
+          const realizedPnl = parseFloat(p.realized_pnl_sol) || 0;
           const currentValue = tokens * currentPrice;
-          const pnl = currentValue - amountSol;
-          const pnlPercent = amountSol > 0 ? (pnl / amountSol) * 100 : 0;
+          // Include realized PnL for positions with partial sells
+          const pnl = realizedPnl + currentValue - amountSol;
+          const pnlPercent = amountSol > 0 ? (pnl / amountSol) * 100 : (currentValue > 0 ? 999 : 0);
           return {
             id: p.id,
             symbol: p.token_symbol || '???',
@@ -386,8 +390,9 @@ function TerminalInner() {
             currentValue,
             pnl,
             pnlPercent,
+            realizedPnl,
             isMoonBag: p.is_moon_bag || false,
-            timestamp: new Date(p.opened_at || Date.now()).getTime(),
+            timestamp: new Date(p.opened_at || p.created_at || Date.now()).getTime(),
           };
         });
         setPositions(hydrated);
@@ -557,6 +562,7 @@ function TerminalInner() {
           currentValue: currentVal,
           pnl: pnlVal,
           pnlPercent: pnlPct,
+          realizedPnl: parseFloat(apiPos.realized_pnl_sol) || 0,
           isMoonBag: apiPos.is_moon_bag || false,
           timestamp: Date.now(),
         };
