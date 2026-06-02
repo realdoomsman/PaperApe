@@ -4,7 +4,7 @@ services:
     runtime: node
     region: oregon
     plan: standard  # $25/mo — 1 CPU, 2GB RAM, always-on
-    buildCommand: npm install && npm run build --workspace=@paperape/shared && npm run build --workspace=@paperape/api
+    buildCommand: npm install --include=dev && npm run build --workspace=@paperape/shared && npm run build --workspace=@paperape/api
     startCommand: node apps/api/dist/server.js
     healthCheckPath: /health
     autoDeploy: true
