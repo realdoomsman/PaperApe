@@ -66,7 +66,7 @@ export default function AppShell({ children, balance }: AppShellProps) {
       {/* Floating top nav */}
       <nav className={`topnav ${scrolled ? 'scrolled' : ''}`}>
         <Link href="/dashboard" className="nav-brand">
-          <img src="/icon.png" alt="PaperApe" className="nav-logo" style={{ width: 28, height: 28, borderRadius: 6 }} />
+          <img src="/logo.png" alt="PaperApe" className="nav-logo" style={{ width: 28, height: 28, borderRadius: 6 }} />
           <span className="nav-name">PaperApe</span>
         </Link>
 
