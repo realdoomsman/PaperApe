@@ -109,6 +109,41 @@ app.get('/health', async (_req, res) => {
   });
 });
 
+// ─── Debug: Check raw Firestore data ────────────────────
+app.get('/debug/data', async (_req, res) => {
+  try {
+    const { db, isMockMode } = await import('./lib/firebase.js');
+    if (isMockMode) {
+      const { mockPositions } = await import('./services/tradeEngine.js');
+      const allPositions: any[] = [];
+      mockPositions.forEach((positions, userId) => {
+        allPositions.push({ userId, count: positions.length, statuses: positions.map(p => p.status) });
+      });
+      return res.json({ mode: 'mock', users: allPositions });
+    }
+
+    // Get all users
+    const usersSnap = await db.collection('users').get();
+    const users: any[] = [];
+    for (const userDoc of usersSnap.docs) {
+      const userData = userDoc.data();
+      const posSnap = await db.collection('users').doc(userDoc.id).collection('positions').get();
+      const tradeSnap = await db.collection('users').doc(userDoc.id).collection('trades').limit(5).get();
+      users.push({
+        id: userDoc.id,
+        email: userData.email,
+        balance: userData.paper_balance,
+        positionCount: posSnap.size,
+        positions: posSnap.docs.map(d => ({ id: d.id, status: d.data().status, token: d.data().token_symbol, amount: d.data().amount_sol })),
+        recentTradeCount: tradeSnap.size,
+      });
+    }
+    res.json({ mode: 'firestore', userCount: usersSnap.size, users });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ─── Routes ─────────────────────────────────────────────
 app.use('/auth', authRouter);
 app.use('/trades', tradesRouter);
