@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { authenticateRequest } from '../services/auth.js';
 import { db, isMockMode } from '../lib/firebase.js';
+import { applyPrimaryWalletBalanceDelta } from './wallets.js';
 
 export const academyRouter = Router();
 
@@ -52,6 +53,11 @@ academyRouter.post('/claim-reward', async (req, res) => {
       // Add reward to balance
       const { fundUser } = await import('../services/auth.js');
       const updated = await fundUser(user.id, reward);
+      try {
+        await applyPrimaryWalletBalanceDelta(user.id, reward);
+      } catch (walletErr) {
+        console.warn('Wallet balance sync failed after academy reward:', walletErr);
+      }
 
       return res.json({
         success: true,
@@ -87,6 +93,11 @@ academyRouter.post('/claim-reward', async (req, res) => {
       completed_lessons: newCompleted,
       paper_balance: newBalance,
     });
+    try {
+      await applyPrimaryWalletBalanceDelta(user.id, reward);
+    } catch (walletErr) {
+      console.warn('Wallet balance sync failed after academy reward:', walletErr);
+    }
 
     res.json({
       success: true,

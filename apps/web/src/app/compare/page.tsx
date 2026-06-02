@@ -61,6 +61,11 @@ export default function ComparePage() {
   const debounceA = useRef<ReturnType<typeof setTimeout> | null>(null);
   const debounceB = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const clearDebounces = useCallback(() => {
+    if (debounceA.current) clearTimeout(debounceA.current);
+    if (debounceB.current) clearTimeout(debounceB.current);
+  }, []);
+
   const search = useCallback((q: string, side: 'A' | 'B') => {
     const timerRef = side === 'A' ? debounceA : debounceB;
     if (timerRef.current) clearTimeout(timerRef.current);
@@ -80,11 +85,8 @@ export default function ComparePage() {
   }, []);
 
   useEffect(() => {
-    return () => {
-      if (debounceA.current) clearTimeout(debounceA.current);
-      if (debounceB.current) clearTimeout(debounceB.current);
-    };
-  }, []);
+    return clearDebounces;
+  }, [clearDebounces]);
 
   const selectToken = async (t: any, side: 'A' | 'B') => {
     const setLoading = side === 'A' ? setLoadingA : setLoadingB;
