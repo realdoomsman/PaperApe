@@ -40,6 +40,7 @@ tradesRouter.post('/buy', async (req, res) => {
     }
 
     const result = await executeBuy(req.user.id, buyReq);
+    console.log(`[BUY] user=${req.user.id} token=${buyReq.token_address} amount=${buyReq.amount_sol} posId=${result.position?.id}`);
     res.json({
       success: true,
       data: {
@@ -122,8 +123,10 @@ tradesRouter.get('/positions', async (req, res) => {
   try {
     const status = req.query.status as string | undefined;
     const positions = await getUserPositions(req.user.id, status);
+    console.log(`[POSITIONS] user=${req.user.id} status=${status} count=${positions.length}`);
     res.json({ success: true, data: { positions } });
   } catch (err: any) {
+    console.error(`[POSITIONS] user=${req.user.id} error:`, err.message);
     res.status(500).json({ success: false, error: err.message });
   }
 });

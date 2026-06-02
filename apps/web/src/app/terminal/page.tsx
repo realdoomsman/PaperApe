@@ -328,8 +328,8 @@ function TerminalInner() {
   useEffect(() => {
     if (!authToken) return;
     apiRequest('GET', '/auth/me', undefined, authToken).then(r => {
-      if (r.success && r.data?.user) setBalance(parseFloat(r.data.user.paper_balance ?? 100));
-    }).catch(() => {});
+      if (r.success && r.data?.user) setBalance(parseFloat(r.data.user.paper_balance ?? 0));
+    }).catch((err) => { console.error('[PA] Failed to load balance:', err); });
 
     // Hydrate positions from API so they survive page refresh
     apiRequest('GET', '/trades/positions?status=open', undefined, authToken).then(r => {
@@ -366,7 +366,7 @@ function TerminalInner() {
         });
         setPositions(hydrated);
       }
-    }).catch(() => {});
+    }).catch((err) => { console.error('[PA] Failed to load positions:', err); });
   }, [authToken]);
 
   const playTradeSound = useCallback((type: string) => {
@@ -454,7 +454,7 @@ function TerminalInner() {
 
   const estTokens = displayPriceSol > 0 ? parseFloat(amount || '0') / displayPriceSol : 0;
 
-  const displayBalance = balance ?? 100;
+  const displayBalance = balance ?? 0;
 
   // ─── Trade Execution ─────────────────────────────────
   // Trade confirmation state
