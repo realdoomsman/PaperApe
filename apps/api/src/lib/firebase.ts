@@ -24,6 +24,7 @@ if (!isMockMode) {
     app = getApps()[0];
   }
   db = getFirestore(app);
+  db.settings({ ignoreUndefinedProperties: true });
 } else {
   console.log('🦍 Running in MOCK MODE — no Firebase connection');
   // Create a null-safe proxy so Firestore imports don't crash

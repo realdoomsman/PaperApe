@@ -42,8 +42,8 @@ export async function createAutoOrder(params: {
     ...params,
     status: 'active',
     created_at: new Date().toISOString(),
-    highest_price: params.type === 'trailing_sl' ? params.entry_price : undefined,
   };
+  if (params.type === 'trailing_sl') order.highest_price = params.entry_price;
 
   if (isMockMode) {
     order.id = `ao-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;

@@ -83,10 +83,11 @@ alertsRouter.post('/', async (req: any, res) => {
       token_symbol: token_symbol || '???',
       condition,
       target_price: parseFloat(target_price),
-      note: note || undefined,
       status: 'active',
       created_at: new Date().toISOString(),
     };
+    const cleanNote = typeof note === 'string' ? note.trim() : '';
+    if (cleanNote) alert.note = cleanNote;
 
     if (isMockMode) {
       alert.id = `alert-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
