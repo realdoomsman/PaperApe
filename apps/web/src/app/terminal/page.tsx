@@ -271,7 +271,6 @@ function TerminalInner() {
       }
       clearInterval(fullRefresh);
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tokenAddress, fetchTokenData]);
 
   // Subscribe newly-bought tokens to WS price feed immediately
