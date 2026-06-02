@@ -112,6 +112,7 @@ export default function AnalyticsPage() {
 
   const tokenEntries = stats ? Object.entries(stats.byToken).sort((a, b) => b[1].trades - a[1].trades) : [];
   const maxTrades = Math.max(...tokenEntries.map(([, v]) => v.trades), 1);
+  const positionTradeCount = new Set(trades.map(t => t.position_id).filter(Boolean)).size;
 
   if (!authLoading && !authToken) {
     return (
@@ -137,7 +138,7 @@ export default function AnalyticsPage() {
           <h1 style={{ fontSize: 18, fontWeight: 700, color: 'var(--t0)', margin: 0 }}>Performance Analytics</h1>
           <div style={{ fontSize: 12, color: 'var(--t2)', marginTop: 2 }}>Deep dive into your trading performance</div>
         </div>
-        <div className="mono" style={{ fontSize: 11, color: 'var(--t3)' }}>{trades.length} trades analyzed</div>
+        <div className="mono" style={{ fontSize: 11, color: 'var(--t3)' }}>{positionTradeCount} trades / {trades.length} txns</div>
       </div>
 
       {loading ? (
@@ -158,7 +159,7 @@ export default function AnalyticsPage() {
               { label: 'Total PnL', value: `${stats.totalPnl >= 0 ? '+' : ''}${stats.totalPnl.toFixed(4)}`, sub: 'SOL', cls: stats.totalPnl >= 0 ? 'up' : 'down' },
               { label: 'Win Rate', value: `${stats.sellCount > 0 ? ((stats.wins / stats.sellCount) * 100).toFixed(1) : 0}`, sub: '%', cls: stats.sellCount > 0 && stats.wins / stats.sellCount > 0.5 ? 'up' : 'down' },
               { label: 'Profit Factor', value: stats.profitFactor === Infinity ? '∞' : stats.profitFactor.toFixed(2), sub: 'ratio', cls: stats.profitFactor >= 1 ? 'up' : 'down' },
-              { label: 'Avg PnL/Trade', value: `${stats.avgPnl >= 0 ? '+' : ''}${stats.avgPnl.toFixed(4)}`, sub: 'SOL', cls: stats.avgPnl >= 0 ? 'up' : 'down' },
+              { label: 'Avg PnL/Exit', value: `${stats.avgPnl >= 0 ? '+' : ''}${stats.avgPnl.toFixed(4)}`, sub: 'SOL', cls: stats.avgPnl >= 0 ? 'up' : 'down' },
             ].map(m => (
               <div key={m.label} className="card" style={{ textAlign: 'center', padding: '16px 12px' }}>
                 <div style={{ fontSize: 9, fontWeight: 600, color: 'var(--t3)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>{m.label}</div>
@@ -200,7 +201,7 @@ export default function AnalyticsPage() {
               </div>
             </div>
             <div className="card">
-              <div className="card-head"><span className="card-title">Trades by Day</span></div>
+              <div className="card-head"><span className="card-title">Exit Transactions by Day</span></div>
               <div className="card-pad">
                 <div style={{ display: 'flex', gap: 4, height: 60, alignItems: 'flex-end' }}>
                   {stats.byDay.map((d, i) => {
@@ -222,7 +223,7 @@ export default function AnalyticsPage() {
             <div className="card-head"><span className="card-title">Performance by Token</span></div>
             <div className="card-pad">
               {tokenEntries.slice(0, 10).map(([sym, data]) => (
-                <MiniBar key={sym} label={`${sym} — ${data.trades} trades — ${data.pnl >= 0 ? '+' : ''}${data.pnl.toFixed(4)} SOL — ${((data.wins / data.trades) * 100).toFixed(0)}% W/R`}
+                <MiniBar key={sym} label={`${sym} — ${data.trades} exits — ${data.pnl >= 0 ? '+' : ''}${data.pnl.toFixed(4)} SOL — ${((data.wins / data.trades) * 100).toFixed(0)}% W/R`}
                   value={data.trades} max={maxTrades} color={data.pnl >= 0 ? 'var(--green)' : 'var(--red)'} />
               ))}
               {tokenEntries.length === 0 && <div style={{ padding: 20, textAlign: 'center', fontSize: 12, color: 'var(--t3)' }}>No token data yet</div>}

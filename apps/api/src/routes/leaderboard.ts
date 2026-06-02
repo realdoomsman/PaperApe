@@ -10,10 +10,10 @@ const LB_CACHE_TTL = 15_000; // 15s cache
 
 /**
  * Aggregate real leaderboard from Firestore.
- * Uses collectionGroup queries to fetch ALL positions and trades in 3 total queries
+ * Uses a collectionGroup query to fetch ALL positions in 2 total queries
  * (instead of 2N+1 queries from the old N+1 pattern).
  *
- * @param sinceDate — optional Date; when provided, only positions/trades with
+ * @param sinceDate — optional Date; when provided, only positions with
  *   `created_at` >= sinceDate are counted. Pass `undefined` for all-time.
  */
 async function aggregateLeaderboard(sinceDate?: Date): Promise<any[]> {
@@ -24,11 +24,10 @@ async function aggregateLeaderboard(sinceDate?: Date): Promise<any[]> {
   }
 
   try {
-    // 3 queries total regardless of user count
-    const [usersSnap, allPositionsSnap, allTradesSnap] = await Promise.all([
+    // 2 queries total regardless of user count
+    const [usersSnap, allPositionsSnap] = await Promise.all([
       db.collection('users').get(),
       db.collectionGroup('positions').get(),
-      db.collectionGroup('trades').get(),
     ]);
 
     if (usersSnap.empty) return [];
@@ -57,22 +56,13 @@ async function aggregateLeaderboard(sinceDate?: Date): Promise<any[]> {
       positionsByUser.get(userId)!.push(data);
     }
 
-    // Count trades by userId
-    const tradeCountByUser = new Map<string, number>();
-    for (const doc of allTradesSnap.docs) {
-      const data = doc.data();
-      if (!isWithinRange(data)) continue;
-      const userId = doc.ref.parent.parent!.id;
-      tradeCountByUser.set(userId, (tradeCountByUser.get(userId) ?? 0) + 1);
-    }
-
     const entries: any[] = [];
 
     for (const userDoc of usersSnap.docs) {
       const userData = userDoc.data();
       const userId = userDoc.id;
       const positions = positionsByUser.get(userId) ?? [];
-      const totalTrades = tradeCountByUser.get(userId) ?? 0;
+      const totalTrades = positions.length;
 
       // Calculate total PnL across positions in the time window
       let totalPnl = 0;
@@ -87,7 +77,8 @@ async function aggregateLeaderboard(sinceDate?: Date): Promise<any[]> {
       }
 
       const finalPnl = totalPnl;
-      const winRate = totalTrades > 0 ? (winCount / (winCount + lossCount)) * 100 : 0;
+      const decidedPositions = winCount + lossCount;
+      const winRate = decidedPositions > 0 ? (winCount / decidedPositions) * 100 : 0;
 
       entries.push({
         id: userId,

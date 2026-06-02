@@ -15,7 +15,7 @@ vi.mock('./services/birdeye.js', () => ({
   getTokenOverview: vi.fn(),
 }));
 
-const { executeBuy, executeSell, mockPositions, resetUserOpenPositions } = await import('./services/tradeEngine.js');
+const { executeBuy, executeSell, getUserTrades, mockPositions, mockTrades, resetUserOpenPositions } = await import('./services/tradeEngine.js');
 const { mockUsers } = await import('./services/auth.js');
 const { getTokenPrice, getTokenOverview } = await import('./services/birdeye.js');
 
@@ -62,6 +62,7 @@ describe('trade engine accounting', () => {
     });
     mockUsers.clear();
     mockPositions.clear();
+    mockTrades.length = 0;
     setMockUser();
   });
 
@@ -113,6 +114,32 @@ describe('trade engine accounting', () => {
       sell.position.realized_pnl_sol + sell.position.current_value - sell.position.amount_sol,
     );
     expect(mockUsers.get(USER_ID).paper_balance).toBeCloseTo(99 + sell.solReceived);
+  });
+
+  it('adds repeat buys on the same token to the existing open position', async () => {
+    const first = await settleTrade(executeBuy(USER_ID, {
+      token_address: TOKEN_ADDRESS,
+      amount_sol: 1,
+      slippage_tolerance: 1,
+    }));
+
+    const second = await settleTrade(executeBuy(USER_ID, {
+      token_address: TOKEN_ADDRESS,
+      amount_sol: 2,
+      slippage_tolerance: 1,
+    }));
+
+    const positions = mockPositions.get(USER_ID) ?? [];
+    const trades = await getUserTrades(USER_ID);
+
+    expect(positions).toHaveLength(1);
+    expect(second.position.id).toBe(first.position.id);
+    expect(second.position.amount_sol).toBeCloseTo(3);
+    expect(second.trade.is_add_on).toBe(true);
+    expect(first.trade.is_add_on).toBe(false);
+    expect(new Set(trades.map(t => t.position_id))).toHaveLength(1);
+    expect(trades).toHaveLength(2);
+    expect(mockUsers.get(USER_ID).paper_balance).toBeCloseTo(97);
   });
 
   it('closes a position on a full sell and credits proceeds', async () => {

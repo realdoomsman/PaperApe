@@ -25,6 +25,23 @@ const ShareCard = dynamic(() => import('@/components/ShareCard'), { ssr: false }
 
 const FILTERS = ['All', 'Open', 'Closed', 'Moon Bags', 'Rugged'];
 
+function countPositionTrades(trades: any[], positions: Position[] = []) {
+  const ids = new Set<string>();
+  trades.forEach((t: any) => {
+    if (t.position_id) ids.add(String(t.position_id));
+  });
+  positions.forEach((p) => {
+    if (p.id) ids.add(String(p.id));
+  });
+  return ids.size;
+}
+
+function transactionTypeLabel(t: any) {
+  if (t.trade_type === 'buy' && t.is_add_on) return 'ADD';
+  if (t.trade_type === 'sell_init') return 'INIT';
+  return String(t.trade_type || '').toUpperCase();
+}
+
 export default function HistoryPage() {
   const { token: authToken, loading: authLoading } = useAuth();
   const [positions, setPositions] = useState<Position[]>([]);
@@ -70,6 +87,7 @@ export default function HistoryPage() {
   const totalPnl = positions.reduce((s, p) => s + parseFloat(String(p.pnl_sol ?? 0)), 0);
   const winCount = positions.filter(p => parseFloat(String(p.pnl_sol ?? 0)) > 0).length;
   const lossCount = positions.filter(p => parseFloat(String(p.pnl_sol ?? 0)) < 0).length;
+  const positionTradeCount = countPositionTrades(trades, positions);
 
   if (!authLoading && !authToken) {
     return (
@@ -98,7 +116,7 @@ export default function HistoryPage() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8 }}>
           {[
             { label: 'TOTAL PNL', value: `${totalPnl >= 0 ? '+' : ''}${totalPnl.toFixed(4)} SOL`, cls: totalPnl >= 0 ? 'up' : 'down' },
-            { label: 'TRADES', value: String(trades.length), cls: '' },
+            { label: 'TRADES', value: String(positionTradeCount), cls: '' },
             { label: 'WINS', value: String(winCount), cls: 'up' },
             { label: 'LOSSES', value: String(lossCount), cls: 'down' },
           ].map(s => (
@@ -136,7 +154,7 @@ export default function HistoryPage() {
       {/* Tabs */}
       <div style={{ display: 'flex', gap: 4, marginBottom: 12 }}>
         <button className={`preset ${tab === 'positions' ? 'on' : ''}`} onClick={() => setTab('positions')} style={{ padding: '6px 14px', fontSize: 12 }}>Positions</button>
-        <button className={`preset ${tab === 'trades' ? 'on' : ''}`} onClick={() => setTab('trades')} style={{ padding: '6px 14px', fontSize: 12 }}>Trade Log</button>
+        <button className={`preset ${tab === 'trades' ? 'on' : ''}`} onClick={() => setTab('trades')} style={{ padding: '6px 14px', fontSize: 12 }}>Transactions</button>
         <div style={{ flex: 1 }} />
         {tab === 'positions' && FILTERS.map(f => (
           <button key={f} className={`preset ${filter === f ? 'on' : ''}`} onClick={() => setFilter(f)} style={{ padding: '4px 10px', fontSize: 11 }}>{f}</button>
@@ -147,7 +165,7 @@ export default function HistoryPage() {
               const headers = ['Time', 'Type', 'Symbol', 'SOL Amount', 'Tokens', 'Price'];
               const rows = trades.map((t: any) => [
                 new Date(t.created_at).toISOString(),
-                t.trade_type,
+                transactionTypeLabel(t),
                 t.token_symbol || '',
                 parseFloat(t.amount_sol ?? 0).toFixed(6),
                 parseFloat(t.amount_tokens ?? 0).toFixed(0),
@@ -158,7 +176,7 @@ export default function HistoryPage() {
               const url = URL.createObjectURL(blob);
               const a = document.createElement('a');
               a.href = url;
-              a.download = `paperape_trades_${new Date().toISOString().split('T')[0]}.csv`;
+              a.download = `paperape_transactions_${new Date().toISOString().split('T')[0]}.csv`;
               a.click();
               URL.revokeObjectURL(url);
             }}>
@@ -240,18 +258,19 @@ export default function HistoryPage() {
         <div style={{ background: 'var(--bg-1)', border: '1px solid var(--border-1)', borderRadius: 'var(--r-lg)', overflow: 'hidden' }}>
           {trades.length === 0 ? (
             <div style={{ padding: 48, textAlign: 'center', color: 'var(--t2)' }}>
-              <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--t1)', marginBottom: 4 }}>No trades yet</div>
-              <div style={{ fontSize: 12 }}>Execute your first trade from the Terminal</div>
+              <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--t1)', marginBottom: 4 }}>No transactions yet</div>
+              <div style={{ fontSize: 12 }}>Execute your first paper trade from the Terminal</div>
             </div>
           ) : (
             <>
-              <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.7fr 0.8fr 1fr 0.8fr', padding: '8px 14px', borderBottom: '1px solid var(--border-0)', fontSize: 10, fontWeight: 600, color: 'var(--t3)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                <span>Time</span><span>Type</span><span>SOL</span><span>Tokens</span><span>Price</span>
+              <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.6fr 0.7fr 0.8fr 1fr 0.8fr', padding: '8px 14px', borderBottom: '1px solid var(--border-0)', fontSize: 10, fontWeight: 600, color: 'var(--t3)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                <span>Time</span><span>Type</span><span>Token</span><span>SOL</span><span>Tokens</span><span>Price</span>
               </div>
               {trades.map(t => (
-                <div key={t.id} style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.7fr 0.8fr 1fr 0.8fr', padding: '10px 14px', borderBottom: '1px solid var(--border-0)', alignItems: 'center', fontSize: 12 }}>
+                <div key={t.id} style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.6fr 0.7fr 0.8fr 1fr 0.8fr', padding: '10px 14px', borderBottom: '1px solid var(--border-0)', alignItems: 'center', fontSize: 12 }}>
                   <span className="mono" style={{ fontSize: 11, color: 'var(--t2)' }}>{new Date(t.created_at).toLocaleString()}</span>
-                  <span style={{ fontWeight: 600, color: t.trade_type === 'buy' ? 'var(--green)' : 'var(--red)' }}>{t.trade_type === 'buy' ? 'BUY' : 'SELL'}</span>
+                  <span style={{ fontWeight: 600, color: t.trade_type === 'buy' ? 'var(--green)' : 'var(--red)' }}>{transactionTypeLabel(t)}</span>
+                  <span style={{ fontWeight: 600, color: 'var(--t0)' }}>{t.token_symbol || '???'}</span>
                   <span className="mono" style={{ color: 'var(--t1)' }}>{parseFloat(t.amount_sol ?? 0).toFixed(4)}</span>
                   <span className="mono" style={{ color: 'var(--t1)' }}>{parseFloat(t.amount_tokens ?? 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
                   <span className="mono" style={{ color: 'var(--t1)' }}>{parseFloat(t.execution_price ?? 0) < 0.001 ? parseFloat(t.execution_price ?? 0).toExponential(3) : parseFloat(t.execution_price ?? 0).toFixed(6)}</span>

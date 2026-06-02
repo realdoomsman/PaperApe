@@ -567,8 +567,9 @@ function TerminalInner() {
           return [...prev, newPos];
         });
 
-        showToast(`Bought ${(apiTrade.amount_tokens || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })} ${displaySymbol}`, 'buy');
-        window.dispatchEvent(new CustomEvent('pa:notification', { detail: { title: `Bought ${displaySymbol}`, message: `${(apiTrade.amount_tokens || 0).toLocaleString()} tokens for ${amount} SOL`, type: 'trade' } }));
+        const buyAction = apiTrade?.is_add_on ? 'Added' : 'Bought';
+        showToast(`${buyAction} ${(apiTrade.amount_tokens || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })} ${displaySymbol}`, 'buy');
+        window.dispatchEvent(new CustomEvent('pa:notification', { detail: { title: `${buyAction} ${displaySymbol}`, message: `${(apiTrade.amount_tokens || 0).toLocaleString()} tokens for ${amount} SOL`, type: 'trade' } }));
       } else {
         const pos = positions.find(p => p.tokenAddress === effectiveAddress) || positions.find(p => p.symbol === displaySymbol);
         if (!pos) { showToast('No position to sell', 'error'); setLoading(false); return; }

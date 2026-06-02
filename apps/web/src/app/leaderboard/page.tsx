@@ -71,7 +71,7 @@ export default function LeaderboardPage() {
               </div>
               <div style={{ display: 'flex', justifyContent: 'center', gap: 12, marginTop: 8 }}>
                 <span className="mono" style={{ fontSize: 10, color: 'var(--t2)' }}>{e.win_rate.toFixed(0)}% W/R</span>
-                <span className="mono" style={{ fontSize: 10, color: 'var(--t2)' }}>{e.total_trades} trades</span>
+                <span className="mono" style={{ fontSize: 10, color: 'var(--t2)' }}>{e.total_trades} positions</span>
               </div>
             </div>
           ))}
@@ -82,7 +82,7 @@ export default function LeaderboardPage() {
       <div style={{ background: 'var(--bg-1)', border: '1px solid var(--border-1)', borderRadius: 'var(--r-lg)', overflowX: 'auto', overflowY: 'hidden' }}>
         <div style={{ minWidth: 620 }}>
         <div style={{ display: 'grid', gridTemplateColumns: '50px 1.5fr 1fr 0.6fr 0.6fr 40px', padding: '8px 14px', borderBottom: '1px solid var(--border-0)', fontSize: 10, fontWeight: 600, color: 'var(--t3)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-          <span>Rank</span><span>Trader</span><span>PnL</span><span>W/R</span><span>Trades</span><span></span>
+          <span>Rank</span><span>Trader</span><span>PnL</span><span>W/R</span><span>Positions</span><span></span>
         </div>
         {loading && (
           <div style={{ padding: '4px 0' }}>

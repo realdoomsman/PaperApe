@@ -65,6 +65,17 @@ function fmtVol(n: number): string {
   return n > 0 ? `$${n.toFixed(0)}` : '-';
 }
 
+function countPositionTrades(trades: any[], positions: any[] = []) {
+  const ids = new Set<string>();
+  trades.forEach((t: any) => {
+    if (t.position_id) ids.add(String(t.position_id));
+  });
+  positions.forEach((p: any) => {
+    if (p.id) ids.add(String(p.id));
+  });
+  return ids.size;
+}
+
 export default function DashboardPage() {
   const { mode } = useMode();
   const { user, token: authToken, serverBalance, serverPositions } = useAuth();
@@ -141,6 +152,7 @@ export default function DashboardPage() {
 
   // Use serverPositions from Firestore as fallback if REST API returned nothing
   const effectivePositions = positions.length > 0 ? positions : serverPositions;
+  const totalTradeCount = countPositionTrades(trades, effectivePositions);
   const positionValue = effectivePositions.reduce((s: number, p: any) => s + parseFloat(String(p.current_value ?? p.amount_sol ?? 0)), 0);
   const totalPortfolioValue = displayBalance + positionValue;
 
@@ -289,9 +301,9 @@ export default function DashboardPage() {
           <div className="stat-sub">{totalPnl >= 0 ? 'Profit' : 'Loss'}</div>
         </div>
         <div className="stat-card">
-          <div className="stat-label">Total Trades</div>
-          <div className="stat-val mono">{trades.length}</div>
-          <div className="stat-sub">Lifetime trades</div>
+          <div className="stat-label">Position Trades</div>
+          <div className="stat-val mono">{totalTradeCount}</div>
+          <div className="stat-sub">Add-ons grouped</div>
         </div>
         <div className="stat-card">
           <div className="stat-label">Win Rate</div>

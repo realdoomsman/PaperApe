@@ -11,7 +11,7 @@ import { mockUsers } from './auth.js';
 
 // ─── In-Memory Mock Stores ──────────────────────────────
 export const mockPositions: Map<string, any[]> = new Map(); // userId -> positions
-const mockTrades: any[] = [];
+export const mockTrades: any[] = [];
 let mockIdCounter = 1;
 const EXECUTION_SLIPPAGE_PERCENT = 0;
 
@@ -131,6 +131,7 @@ export async function executeBuy(userId: string, req: BuyRequest): Promise<{
 
     // Check for existing position on same token
     let position = userPositions.find(p => p.token_address === req.token_address && p.status === 'open');
+    const isAddOn = !!position;
 
     if (position) {
       const realizedPnl = parseFloat(String(position.realized_pnl_sol ?? 0));
@@ -201,6 +202,7 @@ export async function executeBuy(userId: string, req: BuyRequest): Promise<{
       amount_tokens: tokensReceived,
       execution_price: executionPrice,
       market_price: marketPriceSol,
+      is_add_on: isAddOn,
       slippage_applied: EXECUTION_SLIPPAGE_PERCENT,
       fee_applied: fees,
       priority_fee: txSim.priorityFee,
@@ -226,6 +228,7 @@ export async function executeBuy(userId: string, req: BuyRequest): Promise<{
     .get();
 
   const existingPosRef = !existingPosSnapshot.empty ? existingPosSnapshot.docs[0].ref : null;
+  const isAddOn = !!existingPosRef;
 
   const result = await db.runTransaction(async (txn) => {
     // Re-read inside transaction for consistency
@@ -317,6 +320,7 @@ export async function executeBuy(userId: string, req: BuyRequest): Promise<{
       amount_tokens: tokensReceived,
       execution_price: executionPrice,
       market_price: marketPriceSol,
+      is_add_on: isAddOn,
       slippage_applied: EXECUTION_SLIPPAGE_PERCENT,
       fee_applied: fees,
       priority_fee: txSim.priorityFee,
@@ -770,7 +774,7 @@ export async function resetUserOpenPositions(userId: string): Promise<number> {
   return closed;
 }
 
-// ─── Get User Trades ────────────────────────────────────
+// ─── Get User Transactions ──────────────────────────────
 export async function getUserTrades(userId: string): Promise<any[]> {
   if (isMockMode) {
     return mockTrades.filter(t => t.user_id === userId).sort((a, b) =>

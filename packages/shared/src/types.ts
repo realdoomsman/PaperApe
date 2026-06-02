@@ -108,6 +108,7 @@ export interface Trade {
   market_price: number;       // price before slippage
   price_usd?: number;         // USD price per token at execution
   market_cap_usd?: number;    // market cap at execution, when available
+  is_add_on?: boolean;         // buy fill added to an existing open position
   slippage_applied: number;   // percentage
   fee_applied: number;        // SOL
   priority_fee?: number;      // SOL
