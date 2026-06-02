@@ -3,6 +3,5 @@
   "buildCommand": "npm run build --workspace=@paperape/shared && npm run build --workspace=@paperape/web",
   "installCommand": "npm install",
   "framework": "nextjs",
-  "outputDirectory": "apps/web/.next",
-  "ignoreCommand": "exit 0"
+  "outputDirectory": "apps/web/.next"
 }
