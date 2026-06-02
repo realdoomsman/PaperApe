@@ -82,12 +82,29 @@ app.get('/', (_req, res) => {
 });
 
 // ─── Health Check ───────────────────────────────────────
-app.get('/health', (_req, res) => {
+app.get('/health', async (_req, res) => {
   const priceStream = getPriceStreamStats();
+  
+  // Firestore connectivity check
+  let firestore: any = { connected: false };
+  try {
+    const { db, isMockMode } = await import('./lib/firebase.js');
+    if (isMockMode) {
+      firestore = { mode: 'mock', connected: true };
+    } else {
+      // Try a simple read to verify Firestore is connected
+      const testSnap = await db.collection('users').limit(1).get();
+      firestore = { mode: 'firestore', connected: true, docCount: testSnap.size };
+    }
+  } catch (err: any) {
+    firestore = { mode: 'unknown', connected: false, error: err.message };
+  }
+
   res.json({
     status: 'ok',
     service: 'paperape-api',
     timestamp: Date.now(),
+    firestore,
     priceStream,
   });
 });
