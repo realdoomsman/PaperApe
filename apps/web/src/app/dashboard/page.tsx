@@ -67,7 +67,7 @@ function fmtVol(n: number): string {
 
 export default function DashboardPage() {
   const { mode } = useMode();
-  const { user, token: authToken } = useAuth();
+  const { user, token: authToken, serverBalance, serverPositions } = useAuth();
   const loginHref = useLoginHref();
   const [balance, setBalance] = useState<number | null>(null);
   const [positions, setPositions] = useState<any[]>([]);
@@ -85,8 +85,8 @@ export default function DashboardPage() {
     setDataError(false);
     Promise.all([
       apiRequest('GET', '/auth/me', undefined, authToken).then(r => {
-        if (r.success && r.data?.user) {
-          setBalance(parseFloat(r.data.user.paper_balance ?? 100));
+         if (r.success && r.data?.user) {
+          setBalance(parseFloat(r.data.user.paper_balance ?? 0));
         }
       }),
       apiRequest('GET', '/trades/positions?status=open', undefined, authToken).then(r => {
@@ -99,7 +99,8 @@ export default function DashboardPage() {
           setTrades(r.data.trades);
         }
       }),
-    ]).catch(() => {
+    ]).catch((err) => {
+      console.error('[Dashboard] Data load error:', err);
       setDataError(true);
     }).finally(() => {
       setDataLoading(false);
@@ -136,8 +137,11 @@ export default function DashboardPage() {
     });
   }, [authToken]);
 
-  const displayBalance = balance ?? 100;
-  const positionValue = positions.reduce((s: number, p: any) => s + parseFloat(String(p.current_value ?? p.amount_sol ?? 0)), 0);
+  const displayBalance = balance ?? serverBalance ?? 0;
+
+  // Use serverPositions from Firestore as fallback if REST API returned nothing
+  const effectivePositions = positions.length > 0 ? positions : serverPositions;
+  const positionValue = effectivePositions.reduce((s: number, p: any) => s + parseFloat(String(p.current_value ?? p.amount_sol ?? 0)), 0);
   const totalPortfolioValue = displayBalance + positionValue;
 
   // Only sell/sell_init trades have meaningful PnL
@@ -145,7 +149,7 @@ export default function DashboardPage() {
 
   // Total PnL: sum realized PnL from sell trades + unrealized from open positions
   const realizedPnl = sellTrades.reduce((s: number, t: any) => s + parseFloat(String(t.realized_pnl_sol ?? 0)), 0);
-  const unrealizedPnl = positions.reduce((s: number, p: any) => {
+  const unrealizedPnl = effectivePositions.reduce((s: number, p: any) => {
     const currentValue = parseFloat(String(p.current_value ?? 0));
     const invested = parseFloat(String(p.amount_sol ?? 0));
     return s + (currentValue - invested);
@@ -250,7 +254,7 @@ export default function DashboardPage() {
                 ? 'Browse public markets and lessons. Sign in when you are ready to save simulated trades.'
                 : mode === 'beginner'
                   ? 'Your paper trading dashboard. No real money -- learn to trade risk-free.'
-                  : `Portfolio overview. ${positions.length} open positions.`}
+                  : `Portfolio overview. ${effectivePositions.length} open positions.`}
             </p>
           </div>
           <button className="btn haptic" style={{ background: 'linear-gradient(135deg, rgba(0,255,136,0.08), rgba(59,130,246,0.08))', border: '1px solid rgba(0,255,136,0.1)', color: 'var(--green)', fontWeight: 700, fontSize: 12 }}
@@ -342,7 +346,7 @@ export default function DashboardPage() {
               </div>
               <div style={{ padding: '8px 10px', background: 'var(--bg-2)', borderRadius: 6 }}>
                 <div style={{ fontSize: 9, color: 'var(--t3)', textTransform: 'uppercase', letterSpacing: 0.5 }}>Open Positions</div>
-                <div className="mono" style={{ fontSize: 13, fontWeight: 700, color: 'var(--t0)' }}>{positions.length}</div>
+                <div className="mono" style={{ fontSize: 13, fontWeight: 700, color: 'var(--t0)' }}>{effectivePositions.length}</div>
               </div>
               <div style={{ padding: '8px 10px', background: 'var(--bg-2)', borderRadius: 6 }}>
                 <div style={{ fontSize: 9, color: 'var(--t3)', textTransform: 'uppercase', letterSpacing: 0.5 }}>Avg Hold</div>
@@ -354,7 +358,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Portfolio Allocation Bar */}
-      {positions.length > 0 && (
+      {effectivePositions.length > 0 && (
         <div className="card an an1" style={{ marginBottom: 14 }}>
           <div className="card-head">
             <span className="card-title">Portfolio Allocation</span>
@@ -362,7 +366,7 @@ export default function DashboardPage() {
           <div className="card-pad">
             {(() => {
               const ALLOC_COLORS = ['#4ade80', '#22d3ee', '#facc15', '#f87171', '#c084fc', '#fb923c', '#60a5fa'];
-              const posAllocations = positions.map((p: any, i: number) => ({
+              const posAllocations = effectivePositions.map((p: any, i: number) => ({
                 label: p.token_symbol || p.symbol || 'TK',
                 value: parseFloat(p.amount_sol ?? p.amount ?? 0),
                 color: ALLOC_COLORS[i % ALLOC_COLORS.length],
@@ -400,9 +404,9 @@ export default function DashboardPage() {
           <div className="card">
             <div className="card-head">
               <span className="card-title">Open Positions</span>
-              <span className="mono" style={{ fontSize: 11, color: 'var(--t3)' }}>{positions.length}</span>
+              <span className="mono" style={{ fontSize: 11, color: 'var(--t3)' }}>{effectivePositions.length}</span>
             </div>
-            {positions.length === 0 ? (
+            {effectivePositions.length === 0 ? (
               <div style={{ padding: '48px 24px', textAlign: 'center' }}>
                 <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--t1)', marginBottom: 6 }}>No Open Trades</div>
                 <div style={{ fontSize: 12, color: 'var(--t3)', marginBottom: 18 }}>Go to the Terminal to make your first paper trade.</div>
@@ -410,7 +414,7 @@ export default function DashboardPage() {
               </div>
             ) : (
               <div>
-                {positions.map((p: any, i: number) => (
+                {effectivePositions.map((p: any, i: number) => (
                   <div key={p.id || i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 18px', borderBottom: '1px solid var(--border-0)' }}>
                     {p.token_image ? (
                       <img src={p.token_image} alt={p.token_symbol} style={{ width: 32, height: 32, borderRadius: 8 }} />

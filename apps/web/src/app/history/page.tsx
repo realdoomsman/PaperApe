@@ -53,10 +53,12 @@ export default function HistoryPage() {
     if (!authToken) return;
     apiRequest('GET', '/trades/positions', undefined, authToken).then(r => {
       if (r.success && r.data?.positions) setPositions(r.data.positions);
-    }).catch(() => {});
+      else console.error('[History] Failed to load positions:', r.error);
+    }).catch((err) => { console.error('[History] Positions error:', err); });
     apiRequest('GET', '/trades/history', undefined, authToken).then(r => {
       if (r.success && r.data?.trades) setTrades(r.data.trades);
-    }).catch(() => {});
+      else console.error('[History] Failed to load trades:', r.error);
+    }).catch((err) => { console.error('[History] Trades error:', err); });
   }, [authToken]);
 
   const filtered = filter === 'All' ? positions
