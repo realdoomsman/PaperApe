@@ -75,6 +75,11 @@ app.use(async (req, res, next) => {
 });
 
 
+// ─── Root ───────────────────────────────────────────────
+app.get('/', (_req, res) => {
+  res.json({ service: 'paperape-api', status: 'ok', docs: '/health' });
+});
+
 // ─── Health Check ───────────────────────────────────────
 app.get('/health', (_req, res) => {
   const priceStream = getPriceStreamStats();
