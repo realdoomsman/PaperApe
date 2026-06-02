@@ -11,10 +11,10 @@ interface Notification {
 }
 
 const ICONS: Record<string, string> = {
-  trade: '',
-  alert: '',
-  system: '',
-  achievement: '',
+  trade: 'T',
+  alert: '!',
+  system: 'S',
+  achievement: 'A',
 };
 
 export default function NotificationCenter() {

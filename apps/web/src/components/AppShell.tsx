@@ -31,7 +31,7 @@ const BEG_NAV = [
 export default function AppShell({ children, balance }: AppShellProps) {
   const pathname = usePathname();
   const { mode, setMode } = useMode();
-  const { user, logout, emailVerified } = useAuth();
+  const { user, logout, emailVerified, serverBalance } = useAuth();
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -52,7 +52,7 @@ export default function AppShell({ children, balance }: AppShellProps) {
 
   const navItems = mode === 'beginner' ? BEG_NAV : PRO_NAV;
   const isAuthed = !!user;
-  const displayBal = balance ?? 100;
+  const displayBal = balance ?? serverBalance ?? 100;
   const initials = user?.displayName?.slice(0, 2).toUpperCase() || user?.email?.slice(0, 2).toUpperCase() || 'PA';
   const loginHref = `/login?returnTo=${encodeURIComponent(pathname || '/dashboard')}`;
 

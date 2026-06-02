@@ -291,46 +291,10 @@ walletsRouter.post('/:id/primary', async (req: any, res) => {
   }
 });
 
-/**
- * DELETE /wallets/:id
- * Delete a sub-wallet (cannot delete primary).
- */
-walletsRouter.delete('/:id', async (req: any, res) => {
-  try {
-    const userId = req.user.id;
-    const walletId = req.params.id;
-
-    if (isMockMode) {
-      const wallets = mockWallets.get(userId);
-      if (!wallets) return res.status(404).json({ success: false, error: 'No wallets found' });
-      const wallet = wallets.find(w => w.id === walletId);
-      if (!wallet) return res.status(404).json({ success: false, error: 'Wallet not found' });
-      if (wallet.isPrimary) return res.status(400).json({ success: false, error: 'Cannot delete primary wallet' });
-      if (wallet.balance > 0) return res.status(400).json({ success: false, error: 'Transfer funds before deleting' });
-
-      const idx = wallets.indexOf(wallet);
-      wallets.splice(idx, 1);
-      return res.json({ success: true, data: { deleted: walletId } });
-    }
-
-    // Firestore
-    const docRef = db.collection('users').doc(userId).collection('wallets').doc(walletId);
-    const snap = await docRef.get();
-    if (!snap.exists) return res.status(404).json({ success: false, error: 'Wallet not found' });
-
-    const data = snap.data()!;
-    if (data.isPrimary) return res.status(400).json({ success: false, error: 'Cannot delete primary wallet' });
-    if ((data.balance ?? 0) > 0) return res.status(400).json({ success: false, error: 'Transfer funds before deleting' });
-
-    await docRef.delete();
-    res.json({ success: true, data: { deleted: walletId } });
-  } catch (err: any) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
 // ═══════════════════════════════════════════════════════════
 // WALLET TRACKER — Track external wallets (smart money)
+// These routes MUST be defined before /:id to avoid Express
+// matching 'track' as an :id parameter.
 // ═══════════════════════════════════════════════════════════
 
 // GET /wallets/tracked — List tracked wallets
@@ -379,3 +343,42 @@ walletsRouter.get('/track/:address/activity', async (req: any, res) => {
     res.status(500).json({ success: false, error: err.message });
   }
 });
+
+/**
+ * DELETE /wallets/:id
+ * Delete a sub-wallet (cannot delete primary).
+ */
+walletsRouter.delete('/:id', async (req: any, res) => {
+  try {
+    const userId = req.user.id;
+    const walletId = req.params.id;
+
+    if (isMockMode) {
+      const wallets = mockWallets.get(userId);
+      if (!wallets) return res.status(404).json({ success: false, error: 'No wallets found' });
+      const wallet = wallets.find(w => w.id === walletId);
+      if (!wallet) return res.status(404).json({ success: false, error: 'Wallet not found' });
+      if (wallet.isPrimary) return res.status(400).json({ success: false, error: 'Cannot delete primary wallet' });
+      if (wallet.balance > 0) return res.status(400).json({ success: false, error: 'Transfer funds before deleting' });
+
+      const idx = wallets.indexOf(wallet);
+      wallets.splice(idx, 1);
+      return res.json({ success: true, data: { deleted: walletId } });
+    }
+
+    // Firestore
+    const docRef = db.collection('users').doc(userId).collection('wallets').doc(walletId);
+    const snap = await docRef.get();
+    if (!snap.exists) return res.status(404).json({ success: false, error: 'Wallet not found' });
+
+    const data = snap.data()!;
+    if (data.isPrimary) return res.status(400).json({ success: false, error: 'Cannot delete primary wallet' });
+    if ((data.balance ?? 0) > 0) return res.status(400).json({ success: false, error: 'Transfer funds before deleting' });
+
+    await docRef.delete();
+    res.json({ success: true, data: { deleted: walletId } });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+

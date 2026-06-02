@@ -4,19 +4,23 @@ import { db } from '../lib/firebase.js';
 
 export const leaderboardRouter = Router();
 
-// ─── Leaderboard Cache ──────────────────────────────────
-let lbCache: any[] = [];
-let lbCacheTime = 0;
+// ─── Leaderboard Cache (per time-range key) ────────────
+const lbCacheMap = new Map<string, { data: any[]; time: number }>();
 const LB_CACHE_TTL = 15_000; // 15s cache
 
 /**
  * Aggregate real leaderboard from Firestore.
  * Uses collectionGroup queries to fetch ALL positions and trades in 3 total queries
  * (instead of 2N+1 queries from the old N+1 pattern).
+ *
+ * @param sinceDate — optional Date; when provided, only positions/trades with
+ *   `created_at` >= sinceDate are counted. Pass `undefined` for all-time.
  */
-async function aggregateLeaderboard(): Promise<any[]> {
-  if (Date.now() - lbCacheTime < LB_CACHE_TTL && lbCache.length > 0) {
-    return lbCache;
+async function aggregateLeaderboard(sinceDate?: Date): Promise<any[]> {
+  const cacheKey = sinceDate ? sinceDate.toISOString() : 'alltime';
+  const cached = lbCacheMap.get(cacheKey);
+  if (cached && Date.now() - cached.time < LB_CACHE_TTL && cached.data.length > 0) {
+    return cached.data;
   }
 
   try {
@@ -29,17 +33,35 @@ async function aggregateLeaderboard(): Promise<any[]> {
 
     if (usersSnap.empty) return [];
 
+    const sinceMs = sinceDate ? sinceDate.getTime() : 0;
+
+    // Helper: check whether a doc's created_at falls within the time window
+    function isWithinRange(docData: any): boolean {
+      if (!sinceDate) return true; // alltime – no filter
+      const raw = docData.created_at;
+      if (!raw) return false;
+      const ts = typeof raw === 'string' ? new Date(raw).getTime()
+        : typeof raw?.toMillis === 'function' ? raw.toMillis()
+        : typeof raw?.seconds === 'number' ? raw.seconds * 1000
+        : 0;
+      return ts >= sinceMs;
+    }
+
     // Group positions by userId (extracted from subcollection path)
     const positionsByUser = new Map<string, any[]>();
     for (const doc of allPositionsSnap.docs) {
+      const data = doc.data();
+      if (!isWithinRange(data)) continue;
       const userId = doc.ref.parent.parent!.id;
       if (!positionsByUser.has(userId)) positionsByUser.set(userId, []);
-      positionsByUser.get(userId)!.push(doc.data());
+      positionsByUser.get(userId)!.push(data);
     }
 
     // Count trades by userId
     const tradeCountByUser = new Map<string, number>();
     for (const doc of allTradesSnap.docs) {
+      const data = doc.data();
+      if (!isWithinRange(data)) continue;
       const userId = doc.ref.parent.parent!.id;
       tradeCountByUser.set(userId, (tradeCountByUser.get(userId) ?? 0) + 1);
     }
@@ -52,7 +74,7 @@ async function aggregateLeaderboard(): Promise<any[]> {
       const positions = positionsByUser.get(userId) ?? [];
       const totalTrades = tradeCountByUser.get(userId) ?? 0;
 
-      // Calculate total PnL across all positions
+      // Calculate total PnL across positions in the time window
       let totalPnl = 0;
       let winCount = 0;
       let lossCount = 0;
@@ -88,12 +110,13 @@ async function aggregateLeaderboard(): Promise<any[]> {
       entries[0].badge = 'HIMOTHY';
     }
 
-    lbCache = entries.slice(0, LEADERBOARD_PAGE_SIZE);
-    lbCacheTime = Date.now();
-    return lbCache;
+    const result = entries.slice(0, LEADERBOARD_PAGE_SIZE);
+    lbCacheMap.set(cacheKey, { data: result, time: Date.now() });
+    return result;
   } catch (err) {
     console.error('[leaderboard] Aggregation error:', err);
-    return lbCache.length > 0 ? lbCache : [];
+    const cached = lbCacheMap.get(cacheKey);
+    return cached && cached.data.length > 0 ? cached.data : [];
   }
 }
 
@@ -102,7 +125,9 @@ async function aggregateLeaderboard(): Promise<any[]> {
 // ─── GET /leaderboard/weekly ────────────────────────────
 leaderboardRouter.get('/weekly', async (_req, res) => {
   try {
-    const rankings = await aggregateLeaderboard();
+    const since = new Date();
+    since.setDate(since.getDate() - 7);
+    const rankings = await aggregateLeaderboard(since);
     res.json({ success: true, data: { rankings } });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
@@ -112,7 +137,9 @@ leaderboardRouter.get('/weekly', async (_req, res) => {
 // ─── GET /leaderboard/monthly ───────────────────────────
 leaderboardRouter.get('/monthly', async (_req, res) => {
   try {
-    const rankings = await aggregateLeaderboard();
+    const since = new Date();
+    since.setDate(since.getDate() - 30);
+    const rankings = await aggregateLeaderboard(since);
     res.json({ success: true, data: { rankings } });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
@@ -132,8 +159,7 @@ leaderboardRouter.get('/alltime', async (_req, res) => {
 // ─── POST /leaderboard/refresh ──────────────────────────
 leaderboardRouter.post('/refresh', async (_req, res) => {
   try {
-    lbCache = [];
-    lbCacheTime = 0;
+    lbCacheMap.clear();
     const rankings = await aggregateLeaderboard();
     res.json({ success: true, data: { rankings, message: 'Leaderboard refreshed' } });
   } catch (err: any) {

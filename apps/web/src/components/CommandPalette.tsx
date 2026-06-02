@@ -14,31 +14,32 @@ interface CmdItem {
 export default function CommandPalette() {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
+  const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
 
   const items: CmdItem[] = [
     // Navigation
-    { id: 'nav-dash', label: 'Dashboard', desc: 'Portfolio overview & stats', icon: '', action: () => router.push('/dashboard'), category: 'Navigate' },
-    { id: 'nav-term', label: 'Terminal', desc: 'Trade tokens', icon: '', action: () => router.push('/terminal'), category: 'Navigate' },
-    { id: 'nav-disc', label: 'Discover', desc: 'Trending tokens & trenches', icon: '', action: () => router.push('/discover'), category: 'Navigate' },
-    { id: 'nav-wall', label: 'Wallets', desc: 'Manage sub-wallets', icon: '', action: () => router.push('/wallets'), category: 'Navigate' },
-    { id: 'nav-lead', label: 'Leaderboard', desc: 'Top traders rankings', icon: '', action: () => router.push('/leaderboard'), category: 'Navigate' },
-    { id: 'nav-hist', label: 'Trade History', desc: 'Past trades & PnL', icon: '', action: () => router.push('/history'), category: 'Navigate' },
-    { id: 'nav-anal', label: 'Analytics', desc: 'Performance deep dive', icon: '', action: () => router.push('/analytics'), category: 'Navigate' },
-    { id: 'nav-acad', label: 'Academy', desc: 'Learn trading lessons', icon: '', action: () => router.push('/learn'), category: 'Navigate' },
-    { id: 'nav-sett', label: 'Settings', desc: 'Preferences & config', icon: '', action: () => router.push('/settings'), category: 'Navigate' },
+    { id: 'nav-dash', label: 'Dashboard', desc: 'Portfolio overview & stats', icon: 'D', action: () => router.push('/dashboard'), category: 'Navigate' },
+    { id: 'nav-term', label: 'Terminal', desc: 'Trade tokens', icon: 'T', action: () => router.push('/terminal'), category: 'Navigate' },
+    { id: 'nav-disc', label: 'Discover', desc: 'Trending tokens & trenches', icon: 'D', action: () => router.push('/discover'), category: 'Navigate' },
+    { id: 'nav-wall', label: 'Wallets', desc: 'Manage sub-wallets', icon: 'W', action: () => router.push('/wallets'), category: 'Navigate' },
+    { id: 'nav-lead', label: 'Leaderboard', desc: 'Top traders rankings', icon: 'L', action: () => router.push('/leaderboard'), category: 'Navigate' },
+    { id: 'nav-hist', label: 'Trade History', desc: 'Past trades & PnL', icon: 'H', action: () => router.push('/history'), category: 'Navigate' },
+    { id: 'nav-anal', label: 'Analytics', desc: 'Performance deep dive', icon: 'A', action: () => router.push('/analytics'), category: 'Navigate' },
+    { id: 'nav-acad', label: 'Academy', desc: 'Learn trading lessons', icon: 'G', action: () => router.push('/learn'), category: 'Navigate' },
+    { id: 'nav-sett', label: 'Settings', desc: 'Preferences & config', icon: 'S', action: () => router.push('/settings'), category: 'Navigate' },
     // Tools
-    { id: 'tool-comp', label: 'Token Compare', desc: 'Side-by-side token analysis', icon: '', action: () => router.push('/compare'), category: 'Tools' },
-    { id: 'tool-calc', label: 'Position Calculator', desc: 'Risk & position sizing', icon: '', action: () => router.push('/calculator'), category: 'Tools' },
+    { id: 'tool-comp', label: 'Token Compare', desc: 'Side-by-side token analysis', icon: 'C', action: () => router.push('/compare'), category: 'Tools' },
+    { id: 'tool-calc', label: 'Position Calculator', desc: 'Risk & position sizing', icon: 'P', action: () => router.push('/calculator'), category: 'Tools' },
     // Quick Actions
-    { id: 'act-buy', label: 'Quick Buy', desc: 'Open terminal in buy mode', icon: '', action: () => router.push('/terminal?tab=buy'), category: 'Actions' },
-    { id: 'act-sell', label: 'Quick Sell', desc: 'Open terminal in sell mode', icon: '', action: () => router.push('/terminal?tab=sell'), category: 'Actions' },
+    { id: 'act-buy', label: 'Quick Buy', desc: 'Open terminal in buy mode', icon: 'B', action: () => router.push('/terminal?tab=buy'), category: 'Actions' },
+    { id: 'act-sell', label: 'Quick Sell', desc: 'Open terminal in sell mode', icon: 'S', action: () => router.push('/terminal?tab=sell'), category: 'Actions' },
     // Tokens
-    { id: 'tok-bonk', label: 'Trade BONK', desc: 'Open BONK in terminal', icon: '', action: () => router.push('/terminal?token=BONK'), category: 'Tokens' },
-    { id: 'tok-wif', label: 'Trade WIF', desc: 'Open WIF in terminal', icon: '', action: () => router.push('/terminal?token=WIF'), category: 'Tokens' },
-    { id: 'tok-jup', label: 'Trade JUP', desc: 'Open JUP in terminal', icon: '', action: () => router.push('/terminal?token=JUP'), category: 'Tokens' },
-    { id: 'tok-ray', label: 'Trade RAY', desc: 'Open RAY in terminal', icon: '', action: () => router.push('/terminal?token=RAY'), category: 'Tokens' },
+    { id: 'tok-bonk', label: 'Trade BONK', desc: 'Open BONK in terminal', icon: 'B', action: () => router.push('/terminal?token=BONK'), category: 'Tokens' },
+    { id: 'tok-wif', label: 'Trade WIF', desc: 'Open WIF in terminal', icon: 'W', action: () => router.push('/terminal?token=WIF'), category: 'Tokens' },
+    { id: 'tok-jup', label: 'Trade JUP', desc: 'Open JUP in terminal', icon: 'J', action: () => router.push('/terminal?token=JUP'), category: 'Tokens' },
+    { id: 'tok-ray', label: 'Trade RAY', desc: 'Open RAY in terminal', icon: 'R', action: () => router.push('/terminal?token=RAY'), category: 'Tokens' },
   ];
 
   const filtered = query.trim()
@@ -64,15 +65,34 @@ export default function CommandPalette() {
   }, [handleKey]);
 
   useEffect(() => {
-    if (open) { setQuery(''); setTimeout(() => inputRef.current?.focus(), 50); }
+    if (open) { setQuery(''); setSelectedIndex(0); setTimeout(() => inputRef.current?.focus(), 50); }
   }, [open]);
+
+  useEffect(() => {
+    setSelectedIndex(0);
+  }, [query]);
 
   const run = (item: CmdItem) => {
     setOpen(false);
     item.action();
   };
 
+  const handleInputKey = (e: React.KeyboardEvent) => {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setSelectedIndex(prev => Math.min(prev + 1, filtered.length - 1));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setSelectedIndex(prev => Math.max(prev - 1, 0));
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (filtered[selectedIndex]) run(filtered[selectedIndex]);
+    }
+  };
+
   if (!open) return null;
+
+  let flatIndex = -1;
 
   return (
     <>
@@ -93,6 +113,7 @@ export default function CommandPalette() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 18px', borderBottom: '1px solid var(--border-0)' }}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--t2)" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
           <input ref={inputRef} value={query} onChange={e => setQuery(e.target.value)}
+            onKeyDown={handleInputKey}
             placeholder="Search pages, tokens, actions..."
             style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', fontSize: 14, color: 'var(--t0)', fontFamily: 'inherit' }} />
           <kbd style={{ padding: '2px 6px', background: 'var(--bg-2)', borderRadius: 4, fontSize: 9, color: 'var(--t3)', border: '1px solid var(--border-0)' }}>ESC</kbd>
@@ -102,29 +123,33 @@ export default function CommandPalette() {
           {Object.entries(grouped).map(([cat, items]) => (
             <div key={cat}>
               <div style={{ padding: '8px 18px 4px', fontSize: 9, fontWeight: 700, color: 'var(--t3)', textTransform: 'uppercase', letterSpacing: 0.5 }}>{cat}</div>
-              {items.map(item => (
-                <button key={item.id} onClick={() => run(item)} className="haptic"
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 12, width: '100%', padding: '10px 18px',
-                    background: 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left',
-                    transition: 'background 0.1s',
-                  }}
-                  onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-2)')}
-                  onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-                >
-                  <span style={{ fontSize: 16, width: 24, textAlign: 'center' }}>{item.icon}</span>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--t0)' }}>{item.label}</div>
-                    <div style={{ fontSize: 10, color: 'var(--t3)' }}>{item.desc}</div>
-                  </div>
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--t3)" strokeWidth="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-                </button>
-              ))}
+              {items.map(item => {
+                flatIndex++;
+                const isSelected = flatIndex === selectedIndex;
+                return (
+                  <button key={item.id} onClick={() => run(item)} className="haptic"
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 12, width: '100%', padding: '10px 18px',
+                      background: isSelected ? 'var(--bg-2)' : 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left',
+                      transition: 'background 0.1s',
+                    }}
+                    onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-2)')}
+                    onMouseLeave={e => (e.currentTarget.style.background = isSelected ? 'var(--bg-2)' : 'transparent')}
+                  >
+                    <span style={{ fontSize: 16, width: 24, textAlign: 'center' }}>{item.icon}</span>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--t0)' }}>{item.label}</div>
+                      <div style={{ fontSize: 10, color: 'var(--t3)' }}>{item.desc}</div>
+                    </div>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--t3)" strokeWidth="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                  </button>
+                );
+              })}
             </div>
           ))}
           {filtered.length === 0 && (
             <div style={{ padding: '30px 18px', textAlign: 'center', fontSize: 12, color: 'var(--t3)' }}>
-              No results for "{query}"
+              No results for &quot;{query}&quot;
             </div>
           )}
         </div>

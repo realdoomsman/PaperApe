@@ -30,7 +30,7 @@ export default function LeaderboardPage() {
     }).catch(() => { setLoading(false); });
   }, [tab]);
 
-  const userEntry = entries.find(e => user?.uid && e.id?.includes(user.uid));
+  const userEntry = entries.find(e => user?.uid && e.id === user.uid);
 
   return (
     <AppShell>

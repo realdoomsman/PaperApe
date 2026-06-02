@@ -55,57 +55,59 @@ export default function AnalyticsPage() {
   const stats = useMemo(() => {
     if (trades.length === 0) return null;
 
-    // By token
+    const sellTrades = trades.filter(t => t.trade_type === 'sell' || t.trade_type === 'sell_init');
+
+    // By token (only sell trades for PnL)
     const byToken: Record<string, { trades: number; pnl: number; wins: number }> = {};
-    trades.forEach(t => {
+    sellTrades.forEach(t => {
       const sym = t.token_symbol || 'Unknown';
       if (!byToken[sym]) byToken[sym] = { trades: 0, pnl: 0, wins: 0 };
       byToken[sym].trades++;
-      const pnl = parseFloat(t.pnl_sol ?? t.pnl ?? 0);
+      const pnl = parseFloat(t.realized_pnl_sol ?? 0);
       byToken[sym].pnl += pnl;
       if (pnl > 0) byToken[sym].wins++;
     });
 
-    // By day of week
+    // By day of week (only sell trades for PnL)
     const byDay = Array(7).fill(null).map(() => ({ trades: 0, pnl: 0 }));
-    trades.forEach(t => {
+    sellTrades.forEach(t => {
       const d = new Date(t.created_at).getDay();
       byDay[d].trades++;
-      byDay[d].pnl += parseFloat(t.pnl_sol ?? t.pnl ?? 0);
+      byDay[d].pnl += parseFloat(t.realized_pnl_sol ?? 0);
     });
 
-    // PnL over time (cumulative)
-    const sorted = [...trades].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+    // PnL over time (cumulative, sell trades only)
+    const sorted = [...sellTrades].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
     const pnlCurve = [0];
     let running = 0;
-    sorted.forEach(t => { running += parseFloat(t.pnl_sol ?? t.pnl ?? 0); pnlCurve.push(running); });
+    sorted.forEach(t => { running += parseFloat(t.realized_pnl_sol ?? 0); pnlCurve.push(running); });
 
-    // Win rate over time (rolling 10)
+    // Win rate over time (rolling 10, sell trades only)
     const winRateCurve: number[] = [];
     for (let i = 0; i < sorted.length; i++) {
       const window = sorted.slice(Math.max(0, i - 9), i + 1);
-      const wins = window.filter(t => parseFloat(t.pnl_sol ?? t.pnl ?? 0) > 0).length;
+      const wins = window.filter(t => parseFloat(t.realized_pnl_sol ?? 0) > 0).length;
       winRateCurve.push((wins / window.length) * 100);
     }
 
-    // Best/worst streaks
+    // Best/worst streaks (sell trades only)
     let bestStreak = 0, worstStreak = 0, curStreak = 0;
     sorted.forEach(t => {
-      const pnl = parseFloat(t.pnl_sol ?? t.pnl ?? 0);
+      const pnl = parseFloat(t.realized_pnl_sol ?? 0);
       if (pnl > 0) { curStreak = curStreak > 0 ? curStreak + 1 : 1; bestStreak = Math.max(bestStreak, curStreak); }
       else { curStreak = curStreak < 0 ? curStreak - 1 : -1; worstStreak = Math.min(worstStreak, curStreak); }
     });
 
-    const totalPnl = trades.reduce((s, t) => s + parseFloat(t.pnl_sol ?? t.pnl ?? 0), 0);
-    const wins = trades.filter(t => parseFloat(t.pnl_sol ?? t.pnl ?? 0) > 0).length;
-    const avgPnl = trades.length > 0 ? totalPnl / trades.length : 0;
+    const totalPnl = sellTrades.reduce((s, t) => s + parseFloat(t.realized_pnl_sol ?? 0), 0);
+    const wins = sellTrades.filter(t => parseFloat(t.realized_pnl_sol ?? 0) > 0).length;
+    const avgPnl = sellTrades.length > 0 ? totalPnl / sellTrades.length : 0;
     const profitFactor = (() => {
-      const grossProfit = trades.reduce((s, t) => { const p = parseFloat(t.pnl_sol ?? t.pnl ?? 0); return p > 0 ? s + p : s; }, 0);
-      const grossLoss = Math.abs(trades.reduce((s, t) => { const p = parseFloat(t.pnl_sol ?? t.pnl ?? 0); return p < 0 ? s + p : s; }, 0));
+      const grossProfit = sellTrades.reduce((s, t) => { const p = parseFloat(t.realized_pnl_sol ?? 0); return p > 0 ? s + p : s; }, 0);
+      const grossLoss = Math.abs(sellTrades.reduce((s, t) => { const p = parseFloat(t.realized_pnl_sol ?? 0); return p < 0 ? s + p : s; }, 0));
       return grossLoss > 0 ? grossProfit / grossLoss : grossProfit > 0 ? Infinity : 0;
     })();
 
-    return { byToken, byDay, pnlCurve, winRateCurve, bestStreak, worstStreak: Math.abs(worstStreak), totalPnl, wins, avgPnl, profitFactor };
+    return { byToken, byDay, pnlCurve, winRateCurve, bestStreak, worstStreak: Math.abs(worstStreak), totalPnl, wins, avgPnl, profitFactor, sellCount: sellTrades.length };
   }, [trades]);
 
   const tokenEntries = stats ? Object.entries(stats.byToken).sort((a, b) => b[1].trades - a[1].trades) : [];
@@ -154,7 +156,7 @@ export default function AnalyticsPage() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 16 }}>
             {[
               { label: 'Total PnL', value: `${stats.totalPnl >= 0 ? '+' : ''}${stats.totalPnl.toFixed(4)}`, sub: 'SOL', cls: stats.totalPnl >= 0 ? 'up' : 'down' },
-              { label: 'Win Rate', value: `${trades.length > 0 ? ((stats.wins / trades.length) * 100).toFixed(1) : 0}`, sub: '%', cls: stats.wins / trades.length > 0.5 ? 'up' : 'down' },
+              { label: 'Win Rate', value: `${stats.sellCount > 0 ? ((stats.wins / stats.sellCount) * 100).toFixed(1) : 0}`, sub: '%', cls: stats.sellCount > 0 && stats.wins / stats.sellCount > 0.5 ? 'up' : 'down' },
               { label: 'Profit Factor', value: stats.profitFactor === Infinity ? '∞' : stats.profitFactor.toFixed(2), sub: 'ratio', cls: stats.profitFactor >= 1 ? 'up' : 'down' },
               { label: 'Avg PnL/Trade', value: `${stats.avgPnl >= 0 ? '+' : ''}${stats.avgPnl.toFixed(4)}`, sub: 'SOL', cls: stats.avgPnl >= 0 ? 'up' : 'down' },
             ].map(m => (
