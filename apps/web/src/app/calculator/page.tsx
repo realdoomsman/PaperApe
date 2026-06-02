@@ -115,17 +115,17 @@ export default function CalculatorPage() {
               <div style={{ marginTop: 16, textAlign: 'center' }}>
                 {calc.rr >= 3 ? (
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '8px 16px', background: 'rgba(107,142,35,0.08)', borderRadius: 8, border: '1px solid rgba(107,142,35,0.15)' }}>
-                    <span style={{ fontSize: 16 }}>🟢</span>
+                    <span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: '50%', background: 'var(--green)' }} />
                     <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--green)' }}>Excellent R:R — High conviction setup</span>
                   </div>
                 ) : calc.rr >= 2 ? (
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '8px 16px', background: 'rgba(107,142,35,0.05)', borderRadius: 8, border: '1px solid rgba(107,142,35,0.1)' }}>
-                    <span style={{ fontSize: 16 }}>🟡</span>
+                    <span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: '50%', background: 'var(--gold)' }} />
                     <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--gold)' }}>Good R:R — Standard setup</span>
                   </div>
                 ) : calc.rr > 0 ? (
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '8px 16px', background: 'rgba(220,60,60,0.05)', borderRadius: 8, border: '1px solid rgba(220,60,60,0.1)' }}>
-                    <span style={{ fontSize: 16 }}>🔴</span>
+                    <span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: '50%', background: 'var(--red)' }} />
                     <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--red)' }}>Poor R:R — Consider adjusting targets</span>
                   </div>
                 ) : (

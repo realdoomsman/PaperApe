@@ -19,26 +19,26 @@ export default function CommandPalette() {
 
   const items: CmdItem[] = [
     // Navigation
-    { id: 'nav-dash', label: 'Dashboard', desc: 'Portfolio overview & stats', icon: '📊', action: () => router.push('/dashboard'), category: 'Navigate' },
-    { id: 'nav-term', label: 'Terminal', desc: 'Trade tokens', icon: '💹', action: () => router.push('/terminal'), category: 'Navigate' },
-    { id: 'nav-disc', label: 'Discover', desc: 'Trending tokens & trenches', icon: '🔍', action: () => router.push('/discover'), category: 'Navigate' },
-    { id: 'nav-wall', label: 'Wallets', desc: 'Manage sub-wallets', icon: '💰', action: () => router.push('/wallets'), category: 'Navigate' },
-    { id: 'nav-lead', label: 'Leaderboard', desc: 'Top traders rankings', icon: '🏆', action: () => router.push('/leaderboard'), category: 'Navigate' },
-    { id: 'nav-hist', label: 'Trade History', desc: 'Past trades & PnL', icon: '📜', action: () => router.push('/history'), category: 'Navigate' },
-    { id: 'nav-anal', label: 'Analytics', desc: 'Performance deep dive', icon: '📈', action: () => router.push('/analytics'), category: 'Navigate' },
-    { id: 'nav-acad', label: 'Academy', desc: 'Learn trading lessons', icon: '🎓', action: () => router.push('/learn'), category: 'Navigate' },
-    { id: 'nav-sett', label: 'Settings', desc: 'Preferences & config', icon: '⚙️', action: () => router.push('/settings'), category: 'Navigate' },
+    { id: 'nav-dash', label: 'Dashboard', desc: 'Portfolio overview & stats', icon: '', action: () => router.push('/dashboard'), category: 'Navigate' },
+    { id: 'nav-term', label: 'Terminal', desc: 'Trade tokens', icon: '', action: () => router.push('/terminal'), category: 'Navigate' },
+    { id: 'nav-disc', label: 'Discover', desc: 'Trending tokens & trenches', icon: '', action: () => router.push('/discover'), category: 'Navigate' },
+    { id: 'nav-wall', label: 'Wallets', desc: 'Manage sub-wallets', icon: '', action: () => router.push('/wallets'), category: 'Navigate' },
+    { id: 'nav-lead', label: 'Leaderboard', desc: 'Top traders rankings', icon: '', action: () => router.push('/leaderboard'), category: 'Navigate' },
+    { id: 'nav-hist', label: 'Trade History', desc: 'Past trades & PnL', icon: '', action: () => router.push('/history'), category: 'Navigate' },
+    { id: 'nav-anal', label: 'Analytics', desc: 'Performance deep dive', icon: '', action: () => router.push('/analytics'), category: 'Navigate' },
+    { id: 'nav-acad', label: 'Academy', desc: 'Learn trading lessons', icon: '', action: () => router.push('/learn'), category: 'Navigate' },
+    { id: 'nav-sett', label: 'Settings', desc: 'Preferences & config', icon: '', action: () => router.push('/settings'), category: 'Navigate' },
     // Tools
-    { id: 'tool-comp', label: 'Token Compare', desc: 'Side-by-side token analysis', icon: '⚔️', action: () => router.push('/compare'), category: 'Tools' },
-    { id: 'tool-calc', label: 'Position Calculator', desc: 'Risk & position sizing', icon: '🧮', action: () => router.push('/calculator'), category: 'Tools' },
+    { id: 'tool-comp', label: 'Token Compare', desc: 'Side-by-side token analysis', icon: '', action: () => router.push('/compare'), category: 'Tools' },
+    { id: 'tool-calc', label: 'Position Calculator', desc: 'Risk & position sizing', icon: '', action: () => router.push('/calculator'), category: 'Tools' },
     // Quick Actions
-    { id: 'act-buy', label: 'Quick Buy', desc: 'Open terminal in buy mode', icon: '🟢', action: () => router.push('/terminal?tab=buy'), category: 'Actions' },
-    { id: 'act-sell', label: 'Quick Sell', desc: 'Open terminal in sell mode', icon: '🔴', action: () => router.push('/terminal?tab=sell'), category: 'Actions' },
+    { id: 'act-buy', label: 'Quick Buy', desc: 'Open terminal in buy mode', icon: '', action: () => router.push('/terminal?tab=buy'), category: 'Actions' },
+    { id: 'act-sell', label: 'Quick Sell', desc: 'Open terminal in sell mode', icon: '', action: () => router.push('/terminal?tab=sell'), category: 'Actions' },
     // Tokens
-    { id: 'tok-bonk', label: 'Trade BONK', desc: 'Open BONK in terminal', icon: '🐕', action: () => router.push('/terminal?token=BONK'), category: 'Tokens' },
-    { id: 'tok-wif', label: 'Trade WIF', desc: 'Open WIF in terminal', icon: '🎩', action: () => router.push('/terminal?token=WIF'), category: 'Tokens' },
-    { id: 'tok-jup', label: 'Trade JUP', desc: 'Open JUP in terminal', icon: '🪐', action: () => router.push('/terminal?token=JUP'), category: 'Tokens' },
-    { id: 'tok-ray', label: 'Trade RAY', desc: 'Open RAY in terminal', icon: '☀️', action: () => router.push('/terminal?token=RAY'), category: 'Tokens' },
+    { id: 'tok-bonk', label: 'Trade BONK', desc: 'Open BONK in terminal', icon: '', action: () => router.push('/terminal?token=BONK'), category: 'Tokens' },
+    { id: 'tok-wif', label: 'Trade WIF', desc: 'Open WIF in terminal', icon: '', action: () => router.push('/terminal?token=WIF'), category: 'Tokens' },
+    { id: 'tok-jup', label: 'Trade JUP', desc: 'Open JUP in terminal', icon: '', action: () => router.push('/terminal?token=JUP'), category: 'Tokens' },
+    { id: 'tok-ray', label: 'Trade RAY', desc: 'Open RAY in terminal', icon: '', action: () => router.push('/terminal?token=RAY'), category: 'Tokens' },
   ];
 
   const filtered = query.trim()

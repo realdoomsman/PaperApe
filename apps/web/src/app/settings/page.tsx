@@ -64,7 +64,7 @@ export default function SettingsPage() {
 
   const sections = [
     {
-      title: '🎮 Trading',
+      title: 'Trading',
       items: [
         { label: 'Trade Confirmation', desc: 'Show confirmation modal for large trades (>10 SOL)', type: 'toggle' as const, key: 'tradeConfirmation' as keyof Settings },
         { label: 'Default Slippage', desc: 'Default slippage tolerance for new trades', type: 'select' as const, key: 'defaultSlippage' as keyof Settings, options: [{ v: 1, l: '1%' }, { v: 5, l: '5%' }, { v: 10, l: '10%' }, { v: 15, l: '15%' }, { v: 25, l: '25%' }] },
@@ -72,14 +72,14 @@ export default function SettingsPage() {
       ],
     },
     {
-      title: '🔔 Notifications',
+      title: 'Notifications',
       items: [
         { label: 'Sound Effects', desc: 'Play sounds on buy/sell execution', type: 'toggle' as const, key: 'soundEnabled' as keyof Settings },
         { label: 'Keyboard Shortcuts', desc: 'Show shortcut hints bar in terminal', type: 'toggle' as const, key: 'showKeyboardShortcuts' as keyof Settings },
       ],
     },
     {
-      title: '📊 Discover',
+      title: 'Discover',
       items: [
         { label: 'Auto-Refresh', desc: 'Automatically refresh token data on Discover page', type: 'select' as const, key: 'autoRefreshDiscover' as keyof Settings, options: [{ v: 'off', l: 'Off' }, { v: '10', l: '10s' }, { v: '30', l: '30s' }] },
       ],

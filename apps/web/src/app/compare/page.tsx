@@ -190,7 +190,7 @@ export default function ComparePage() {
                 <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--t0)' }}>{tokenA.symbol}</div>
                 <div style={{ fontSize: 10, color: 'var(--t2)' }}>{tokenA.name}</div>
               </div>
-              <div style={{ fontSize: 12, fontWeight: 800, color: 'var(--accent-l)', alignSelf: 'center' }}>⚔️</div>
+              <div style={{ fontSize: 12, fontWeight: 800, color: 'var(--accent-l)', alignSelf: 'center' }}>VS</div>
               <div style={{ textAlign: 'left' }}>
                 <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--t0)' }}>{tokenB.symbol}</div>
                 <div style={{ fontSize: 10, color: 'var(--t2)' }}>{tokenB.name}</div>
@@ -214,15 +214,15 @@ export default function ComparePage() {
                 if (tokenA.priceChange24h > tokenB.priceChange24h) aScore++; else bScore++;
                 const winner = aScore > bScore ? tokenA.symbol : aScore < bScore ? tokenB.symbol : null;
                 return winner
-                  ? <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--green)' }}>🏆 {winner} wins {Math.max(aScore, bScore)}-{Math.min(aScore, bScore)}</div>
-                  : <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--gold)' }}>🤝 It&apos;s a tie!</div>;
+                  ? <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--green)' }}>{winner} wins {Math.max(aScore, bScore)}-{Math.min(aScore, bScore)}</div>
+                  : <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--gold)' }}>It&apos;s a tie!</div>;
               })()}
             </div>
           </div>
         </div>
       ) : (
         <div className="card" style={{ padding: '60px 20px', textAlign: 'center' }}>
-          <div style={{ fontSize: 32, marginBottom: 12 }}>⚔️</div>
+          <div style={{ fontSize: 32, marginBottom: 12 }}>VS</div>
           <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--t1)', marginBottom: 6 }}>Select Two Tokens</div>
           <div style={{ fontSize: 12, color: 'var(--t3)' }}>Search and select tokens above to see their head-to-head comparison</div>
         </div>

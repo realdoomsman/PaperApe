@@ -46,10 +46,10 @@ export default function ToolsPage() {
         const d = res.data;
         setRsResult({
           score: d.scoreNormalized ?? 50,
-          lp: d.lpLockedPct > 50 ? `Locked (${d.lpLockedPct.toFixed(1)}%)` : `Unlocked (${d.lpLockedPct.toFixed(1)}%) ⚠️`,
-          mint: d.mintAuthority === 'revoked' ? 'Revoked' : 'Active ⚠️',
-          honey: d.isHoneypot ? 'Suspected ⚠️' : 'Clear',
-          freeze: d.freezeAuthority === 'revoked' ? 'Revoked' : 'Active ⚠️',
+          lp: d.lpLockedPct > 50 ? `Locked (${d.lpLockedPct.toFixed(1)}%)` : `Unlocked (${d.lpLockedPct.toFixed(1)}%)`,
+          mint: d.mintAuthority === 'revoked' ? 'Revoked' : 'Active',
+          honey: d.isHoneypot ? 'Suspected' : 'Clear',
+          freeze: d.freezeAuthority === 'revoked' ? 'Revoked' : 'Active',
         });
       } else {
         throw new Error('API error');

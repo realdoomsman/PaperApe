@@ -280,7 +280,7 @@ export default function DashboardPage() {
               </div>
               <div>
                 <div style={{ fontSize: 12, fontWeight: 700, color: streak > 0 ? 'var(--green)' : streak < 0 ? 'var(--red)' : 'var(--t3)' }}>
-                  {streak > 0 ? '🔥 Win Streak' : streak < 0 ? '❄️ Loss Streak' : 'No streak'}
+                  {streak > 0 ? 'Win Streak' : streak < 0 ? 'Loss Streak' : 'No streak'}
                 </div>
                 <div style={{ fontSize: 10, color: 'var(--t3)' }}>Consecutive {streak > 0 ? 'wins' : streak < 0 ? 'losses' : '-'}</div>
               </div>
@@ -417,7 +417,7 @@ export default function DashboardPage() {
               </div>
             ) : trendingError ? (
               <div style={{ padding: '40px 0', textAlign: 'center' }}>
-                <div style={{ fontSize: 20, marginBottom: 8 }}>📡</div>
+
                 <div style={{ fontSize: 13, color: 'var(--t2)', fontWeight: 600, marginBottom: 4 }}>Couldn't load trending tokens</div>
                 <div style={{ fontSize: 11, color: 'var(--t3)', marginBottom: 12 }}>API may be starting up — this takes ~30s on first load</div>
                 <button className="btn haptic" onClick={() => { setTrendingError(false); apiRequest('GET', '/tokens/trending').then(r => { if (r.success && r.data?.tokens) { setTrendingTokens(r.data.tokens.slice(0, 8)); setTrendingError(false); } else setTrendingError(true); }).catch(() => setTrendingError(true)); }} style={{ padding: '6px 14px', fontSize: 10 }}>Retry</button>

@@ -58,10 +58,10 @@ export default function LeaderboardPage() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))', gap: 8, marginBottom: 14 }}>
           {entries.slice(0, 3).map(e => (
             <div key={e.rank} style={{ background: 'var(--bg-1)', border: `1px solid ${e.rank === 1 ? 'var(--accent-glow)' : 'var(--border-1)'}`, borderRadius: 'var(--r-lg)', textAlign: 'center', padding: '18px 12px', position: 'relative' }}>
-              {e.rank === 1 && <div style={{ position: 'absolute', top: -8, left: '50%', transform: 'translateX(-50%)', fontSize: 18 }}>👑</div>}
+
               {e.rank === 1 && <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: 'var(--accent)', borderRadius: 'var(--r-lg) var(--r-lg) 0 0' }} />}
               <div style={{ fontSize: 24, fontWeight: 800, color: e.rank === 1 ? 'var(--accent-l)' : e.rank === 2 ? 'var(--t1)' : 'var(--gold)', marginBottom: 4 }}>
-                {e.rank === 1 ? '🥇' : e.rank === 2 ? '🥈' : '🥉'} #{e.rank}
+                #{e.rank}
               </div>
               <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--t0)' }}>{e.username}</div>
               {e.badge === 'HIMOTHY' && <div style={{ fontSize: 10, fontWeight: 800, color: 'var(--accent-l)', background: 'var(--accent-bg)', border: '1px solid var(--accent-glow)', padding: '2px 8px', borderRadius: 'var(--r-sm)', letterSpacing: 1, marginTop: 4, display: 'inline-block' }}>HIMOTHY</div>}
@@ -105,7 +105,7 @@ export default function LeaderboardPage() {
         )}
         {!loading && entries.length === 0 && (
           <div style={{ padding: '48px 20px', textAlign: 'center' }}>
-            <div style={{ fontSize: 28, marginBottom: 8 }}>🏆</div>
+
             <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--t1)', marginBottom: 4 }}>No traders ranked yet</div>
             <div style={{ fontSize: 12, color: 'var(--t3)' }}>Be the first — make some trades and climb the leaderboard!</div>
           </div>
@@ -127,8 +127,8 @@ export default function LeaderboardPage() {
               <span className="mono" style={{ color: 'var(--t2)' }}>{e.total_trades}</span>
               <button className="haptic" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11, color: copiedRank === e.rank ? 'var(--green)' : 'var(--t3)', padding: 2 }}
                 title="Share rank"
-                onClick={() => { navigator.clipboard.writeText(`🏆 ${e.username} is ranked #${e.rank} on PaperApe! PnL: ${e.total_pnl >= 0 ? '+' : ''}${e.total_pnl.toFixed(4)} SOL | W/R: ${e.win_rate.toFixed(0)}% | paperape.fun`); setCopiedRank(e.rank); setTimeout(() => setCopiedRank(null), 2000); }}>
-                {copiedRank === e.rank ? '✓' : '📋'}
+                onClick={() => { navigator.clipboard.writeText(`${e.username} is ranked #${e.rank} on PaperApe! PnL: ${e.total_pnl >= 0 ? '+' : ''}${e.total_pnl.toFixed(4)} SOL | W/R: ${e.win_rate.toFixed(0)}% | paperape.fun`); setCopiedRank(e.rank); setTimeout(() => setCopiedRank(null), 2000); }}>
+                {copiedRank === e.rank ? 'Copied' : 'Share'}
               </button>
             </div>
           );

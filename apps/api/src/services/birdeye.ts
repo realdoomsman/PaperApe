@@ -45,14 +45,10 @@ export async function getTokenPrice(tokenAddress: string): Promise<{
       if (tokenPrice && solPrice) {
         const priceUsd = parseFloat(tokenPrice);
         const priceSol = priceUsd / parseFloat(solPrice);
-        // Jupiter doesn't provide liquidity — fetch from DexScreener in background
-        const result = { priceUsd, priceSol, liquidityUsd: 0 };
-
-        // Async fetch liquidity from DexScreener (don't block)
-        fetchDexScreenerLiquidity(tokenAddress).then(liq => {
-          result.liquidityUsd = liq;
-          cacheSet(cacheKey, result, 5);
-        }).catch(() => {});
+        // Jupiter doesn't provide liquidity. Fetch it before returning so the
+        // trading engine does not treat a fresh Jupiter hit as max-slippage.
+        const liquidityUsd = await fetchDexScreenerLiquidity(tokenAddress);
+        const result = { priceUsd, priceSol, liquidityUsd };
 
         await cacheSet(cacheKey, result, 5);
         return result;

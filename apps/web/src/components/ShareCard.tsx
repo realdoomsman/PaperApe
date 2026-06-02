@@ -18,11 +18,11 @@ interface ShareCardProps {
 }
 
 const RANKS = [
-  { min: 500, label: 'HIMOTHY', emoji: '👑', color: '#ffd700' },
-  { min: 100, label: 'DIAMOND', emoji: '💎', color: '#00d4ff' },
-  { min: 50, label: 'GOLD', emoji: '🥇', color: '#ffb300' },
-  { min: 20, label: 'SILVER', emoji: '🥈', color: '#c0c0c0' },
-  { min: 0, label: 'APE', emoji: '🦍', color: '#8b7355' },
+  { min: 500, label: 'HIMOTHY', emoji: '', color: '#ffd700' },
+  { min: 100, label: 'DIAMOND', emoji: '', color: '#00d4ff' },
+  { min: 50, label: 'GOLD', emoji: '', color: '#ffb300' },
+  { min: 20, label: 'SILVER', emoji: '', color: '#c0c0c0' },
+  { min: 0, label: 'APE', emoji: '', color: '#8b7355' },
 ];
 
 function getRank(pnl: number) {
@@ -85,8 +85,8 @@ export default function ShareCard({
 
   const shareToX = useCallback(() => {
     const text = pnlPercent >= 0
-      ? `Just caught a ${pnlPercent.toFixed(0)}% simulated pump on $${tokenSymbol} 🚀\n\nPracticing for the real trenches on @PaperApe_io\n\n${rankData.emoji} Rank: ${rankData.label}`
-      : `Got rugged on $${tokenSymbol} for ${pnlPercent.toFixed(0)}% 💀\n\nLearning from paper losses on @PaperApe_io`;
+      ? `Just caught a ${pnlPercent.toFixed(0)}% simulated pump on $${tokenSymbol}\n\nPracticing for the real trenches on @PaperApe_io\n\n${rankData.emoji} Rank: ${rankData.label}`
+      : `Got rugged on $${tokenSymbol} for ${pnlPercent.toFixed(0)}%\n\nLearning from paper losses on @PaperApe_io`;
     const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`;
     window.open(url, '_blank', 'width=550,height=420');
   }, [tokenSymbol, pnlPercent, rankData]);
@@ -131,7 +131,7 @@ export default function ShareCard({
                   background: 'linear-gradient(135deg, #2d6b3f, #1a4528)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   fontSize: 16, fontWeight: 900, color: '#fff',
-                }}>🦍</div>
+                }}>PA</div>
               )}
               <div>
                 <div style={{ fontSize: 16, fontWeight: 800, color: '#fff', letterSpacing: 1 }}>PAPERAPE</div>
@@ -204,12 +204,12 @@ export default function ShareCard({
         <div style={{ display: 'flex', gap: 8, marginTop: 12, padding: '0 4px' }}>
           {!imageUrl ? (
             <button onClick={generateImage} disabled={generating} className="btn primary haptic" style={{ flex: 1, justifyContent: 'center', padding: '12px 0', fontSize: 13, fontWeight: 700 }}>
-              {generating ? '⏳ Generating...' : '📸 Generate Image'}
+              {generating ? 'Generating...' : 'Generate Image'}
             </button>
           ) : (
             <>
               <button onClick={downloadImage} className="btn haptic" style={{ flex: 1, justifyContent: 'center', padding: '12px 0', fontSize: 12, fontWeight: 600 }}>
-                💾 Download
+                Download
               </button>
               <button onClick={shareToX} className="btn primary haptic" style={{ flex: 1, justifyContent: 'center', padding: '12px 0', fontSize: 12, fontWeight: 600 }}>
                 Share to 𝕏

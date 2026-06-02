@@ -68,7 +68,7 @@ export default function LessonRenderer({ lesson, completed, onComplete, onBack }
 
         {lesson.interactiveModuleId === 'demo' && (
           <div style={{ marginTop: 24, padding: '14px 18px', background: 'var(--bg-2)', borderRadius: 10, border: '1px solid var(--border-1)' }}>
-            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--t1)', marginBottom: 8 }}>📖 Concept Demo</div>
+            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--t1)', marginBottom: 8 }}>Concept Demo</div>
             <div style={{ fontSize: 12, color: 'var(--t2)', lineHeight: 1.7 }}>
               This lesson covers foundational concepts. Apply them in the Terminal to practice.
             </div>
@@ -77,7 +77,7 @@ export default function LessonRenderer({ lesson, completed, onComplete, onBack }
 
         {lesson.interactiveModuleId === 'bonding-curve-demo' && (
           <div style={{ marginTop: 24, padding: '14px 18px', background: 'var(--bg-2)', borderRadius: 10, border: '1px solid var(--border-1)' }}>
-            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--t1)', marginBottom: 8 }}>📈 Bonding Curve Visualization</div>
+            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--t1)', marginBottom: 8 }}>Bonding Curve Visualization</div>
             <div style={{ fontSize: 12, color: 'var(--t2)', lineHeight: 1.7 }}>
               As more people buy, the price rises exponentially along the curve.
               Early buyers get in cheap. Late buyers pay a premium. When market cap hits ~$69K,
@@ -103,7 +103,7 @@ export default function LessonRenderer({ lesson, completed, onComplete, onBack }
               onClick={handleComplete}
               disabled={completed}
             >
-              {completed ? '✅ Completed' : `Mark Complete (+${lesson.reward} SOL)`}
+              {completed ? 'Completed' : `Mark Complete (+${lesson.reward} SOL)`}
             </button>
           </div>
         )}
@@ -141,12 +141,12 @@ function QuizModule({ quiz, onComplete }: { quiz: NonNullable<Lesson['quizData']
       </div>
       {answer && (
         <div style={{ marginTop: 10, fontSize: 12, fontWeight: 600, color: answer === quiz.correctAnswer ? 'var(--green)' : 'var(--red)' }}>
-          {answer === quiz.correctAnswer ? 'Correct! 🎉' : `Not quite. The correct answer is: ${quiz.options.find(o => o.value === quiz.correctAnswer)?.text}`}
+          {answer === quiz.correctAnswer ? 'Correct!' : `Not quite. The correct answer is: ${quiz.options.find(o => o.value === quiz.correctAnswer)?.text}`}
         </div>
       )}
       {answer === quiz.correctAnswer && (
         <button onClick={onComplete} className="btn primary haptic" style={{ marginTop: 12, fontSize: 12 }}>
-          ✅ Complete Lesson — Claim Reward
+          Complete Lesson — Claim Reward
         </button>
       )}
     </div>

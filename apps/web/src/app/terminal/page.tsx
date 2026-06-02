@@ -83,8 +83,7 @@ function TerminalInner() {
   const toastIdRef = useRef(0);
   const [loading, setLoading] = useState(false);
   const [sellPercent, setSellPercent] = useState(100);
-  const [priority, setPriority] = useState<'normal' | 'turbo' | 'yolo'>('normal');
-  const [congestion, setCongestion] = useState<'low' | 'medium' | 'high'>('low');
+
   const [activityTab, setActivityTab] = useState<'trades' | 'pnl'>('trades');
   const [showShortcuts, setShowShortcuts] = useState(false);
 
@@ -129,7 +128,6 @@ function TerminalInner() {
       if (raw) {
         const s = JSON.parse(raw);
         if (s.defaultSlippage != null) setSlippage(s.defaultSlippage);
-        if (s.defaultPriority) setPriority(s.defaultPriority);
       }
     } catch {}
   }, []);
@@ -142,7 +140,7 @@ function TerminalInner() {
       }).catch(() => {});
       fetch(`${getApiBase()}/health`)
         .then(r => r.json())
-        .then(r => { if (r.network?.congestion) setCongestion(r.network.congestion); })
+        .then(() => {})
         .catch(() => {});
     };
     fetchStatus();
@@ -488,7 +486,7 @@ function TerminalInner() {
     try {
       if (tab === 'buy') {
         const res = await apiRequest('POST', '/trades/buy', {
-          token_address: effectiveAddress, amount_sol: amt, slippage_tolerance: slippage, priority,
+          token_address: effectiveAddress, amount_sol: amt, slippage_tolerance: slippage,
         }, authToken || undefined);
         if (!res.success) { showToast(res.error || 'Trade failed', 'error'); setLoading(false); return; }
         const { position: apiPos, trade: apiTrade } = res.data as any;
@@ -877,7 +875,7 @@ function TerminalInner() {
               <div style={{ display: 'flex', gap: 6, padding: '6px 14px', flexWrap: 'wrap' }}>
                 {(liveData as any).socials.website && (
                   <a href={(liveData as any).socials.website} target="_blank" rel="noopener noreferrer" className="btn haptic" style={{ fontSize: 9, padding: '3px 10px', gap: 3 }}>
-                    🌐 Website
+                    Website
                   </a>
                 )}
                 {(liveData as any).socials.twitter && (
@@ -1183,20 +1181,6 @@ function TerminalInner() {
                       <button key={v} className={`preset haptic ${slippage === v ? 'on' : ''}`} onClick={() => setSlippage(v)} style={{ fontSize: 10 }}>{v}%</button>
                     ))}
                   </div>
-                  <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--t3)', marginBottom: 6, letterSpacing: 0.5, textTransform: 'uppercase' }}>Priority Fee</div>
-                  <div style={{ display: 'flex', gap: 4, marginBottom: 14 }}>
-                    {(['normal', 'turbo', 'yolo'] as const).map(v => (
-                      <button key={v} className={`preset haptic ${priority === v ? 'on' : ''}`} onClick={() => setPriority(v)}
-                        style={{ flex: 1, fontSize: 10, color: v === 'yolo' ? 'var(--red)' : v === 'turbo' ? 'var(--gold)' : undefined }}>
-                        {v === 'normal' ? '⚡ Normal' : v === 'turbo' ? '🔥 Turbo' : '💀 YOLO'}
-                      </button>
-                    ))}
-                  </div>
-                  {congestion !== 'low' && (
-                    <div style={{ padding: '6px 10px', background: congestion === 'high' ? 'var(--red-bg)' : 'rgba(255,179,0,0.08)', border: `1px solid ${congestion === 'high' ? 'var(--red)' : 'var(--gold)'}`, borderRadius: 4, marginBottom: 10, fontSize: 10, color: congestion === 'high' ? 'var(--red)' : 'var(--gold)', fontWeight: 600 }}>
-                      ⚠ Network congestion: {congestion.toUpperCase()} — {congestion === 'high' ? 'Txs may fail. Use Turbo/YOLO.' : 'Slight delays expected.'}
-                    </div>
-                  )}
                   <div style={{ padding: '10px 12px', background: 'var(--bg-2)', border: '1px dashed var(--border-1)', borderRadius: 4, marginBottom: 14 }}>
                     <div style={{ fontSize: 9, fontWeight: 600, color: 'var(--t3)', letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 3 }}>Est. Tokens Received</div>
                     <div className="mono" style={{ fontSize: 18, fontWeight: 700, color: 'var(--t0)' }}>

@@ -144,7 +144,7 @@ export default function AnalyticsPage() {
         </div>
       ) : !stats ? (
         <div className="card" style={{ padding: '60px 20px', textAlign: 'center' }}>
-          <div style={{ fontSize: 32, marginBottom: 12 }}>📊</div>
+
           <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--t1)', marginBottom: 6 }}>No Trading Data Yet</div>
           <div style={{ fontSize: 12, color: 'var(--t3)' }}>Make some trades in the Terminal to see your analytics here</div>
         </div>

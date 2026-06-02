@@ -124,12 +124,12 @@ export default function HoneypotSimulator({ onComplete }: { onComplete?: () => v
   const handleSell = useCallback(() => {
     if (phase !== 'bought') return;
     setPhase('trapped');
-    setErrorMsg('❌ Transfer From Not Allowed');
+    setErrorMsg('Transfer From Not Allowed');
     setShowWarning(true);
 
     // After 2s, crash the chart
     setTimeout(() => {
-      setErrorMsg('🚨 HONEYPOT DETECTED — Contract blocks all sells');
+      setErrorMsg('HONEYPOT DETECTED — Contract blocks all sells');
       if (intervalRef.current) clearInterval(intervalRef.current);
 
       // Crash animation
@@ -159,7 +159,7 @@ export default function HoneypotSimulator({ onComplete }: { onComplete?: () => v
       {/* Header */}
       <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--border-0)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div>
-          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--t0)' }}>🍯 Honeypot Simulator</div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--t0)' }}>Honeypot Simulator</div>
           <div style={{ fontSize: 11, color: 'var(--t3)' }}>Experience the SQUID token crash — safely</div>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
@@ -181,7 +181,7 @@ export default function HoneypotSimulator({ onComplete }: { onComplete?: () => v
         {/* FOMO overlay on watching phase */}
         {phase === 'watching' && priceHistory.length > 20 && (
           <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', background: 'rgba(0,0,0,0.8)', padding: '14px 24px', borderRadius: 10, textAlign: 'center', border: '1px solid var(--accent-glow)' }}>
-            <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--accent-l)', marginBottom: 4 }}>🚀 SQUID is PUMPING</div>
+            <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--accent-l)', marginBottom: 4 }}>SQUID is PUMPING</div>
             <div style={{ fontSize: 11, color: 'var(--t2)' }}>+{pnlPct > 0 ? pnlPct.toFixed(0) : ((price / 0.001 - 1) * 100).toFixed(0)}% and climbing...</div>
           </div>
         )}
@@ -211,7 +211,7 @@ export default function HoneypotSimulator({ onComplete }: { onComplete?: () => v
               <div className="mono" style={{ fontSize: 16, fontWeight: 700, color: 'var(--t0)' }}>{balance.toFixed(2)} SOL</div>
             </div>
             <button onClick={handleBuy} className="btn buy haptic" style={{ flex: 1, justifyContent: 'center', padding: '14px 0', fontSize: 14, fontWeight: 700 }}>
-              BUY 5 SOL 🚀
+              BUY 5 SOL
             </button>
           </>
         )}
@@ -226,7 +226,7 @@ export default function HoneypotSimulator({ onComplete }: { onComplete?: () => v
               </div>
             </div>
             <button onClick={handleSell} className="btn sell haptic" style={{ flex: 1, justifyContent: 'center', padding: '14px 0', fontSize: 14, fontWeight: 700, animation: 'pulse 1.5s infinite' }}>
-              SELL — TAKE PROFIT 💰
+              SELL — TAKE PROFIT
             </button>
           </>
         )}
@@ -253,7 +253,7 @@ export default function HoneypotSimulator({ onComplete }: { onComplete?: () => v
       {/* Lesson after crash */}
       {phase === 'crashed' && (
         <div style={{ margin: '0 18px 18px', padding: '16px 18px', background: 'rgba(45,107,63,0.08)', border: '1px solid rgba(45,107,63,0.15)', borderRadius: 10 }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--green)', marginBottom: 8 }}>🧠 What You Learned</div>
+          <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--green)', marginBottom: 8 }}>What You Learned</div>
           <div style={{ fontSize: 12, color: 'var(--t1)', lineHeight: 1.7 }}>
             <strong>Honeypots</strong> are tokens where the smart contract blocks sell transactions for everyone except the deployer.
             The dev buys early, lets FOMO drive the price up, then sells their allocation while everyone else is trapped.
@@ -264,7 +264,7 @@ export default function HoneypotSimulator({ onComplete }: { onComplete?: () => v
           </div>
           {onComplete && (
             <button onClick={onComplete} className="btn primary haptic" style={{ marginTop: 12, fontSize: 12, padding: '8px 18px' }}>
-              ✅ Complete Lesson — Claim Reward
+              Complete Lesson — Claim Reward
             </button>
           )}
         </div>

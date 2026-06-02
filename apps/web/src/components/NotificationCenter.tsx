@@ -11,10 +11,10 @@ interface Notification {
 }
 
 const ICONS: Record<string, string> = {
-  trade: '💹',
-  alert: '🔔',
-  system: '⚙️',
-  achievement: '🏆',
+  trade: '',
+  alert: '',
+  system: '',
+  achievement: '',
 };
 
 export default function NotificationCenter() {
@@ -116,7 +116,7 @@ export default function NotificationCenter() {
           <div style={{ maxHeight: 360, overflowY: 'auto' }}>
             {notifications.length === 0 ? (
               <div style={{ padding: '40px 20px', textAlign: 'center' }}>
-                <div style={{ fontSize: 24, marginBottom: 8 }}>🔕</div>
+                <div style={{ fontSize: 24, marginBottom: 8 }}></div>
                 <div style={{ fontSize: 12, color: 'var(--t3)' }}>No notifications yet</div>
                 <div style={{ fontSize: 10, color: 'var(--t3)', marginTop: 4 }}>Trade activity and alerts will appear here</div>
               </div>
