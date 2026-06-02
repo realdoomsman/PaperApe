@@ -133,21 +133,21 @@ describe('trade engine accounting', () => {
     expect(mockUsers.get(USER_ID).paper_balance).toBeCloseTo(99 + sell.solReceived);
   });
 
-  it('rejects buys when modeled slippage exceeds tolerance', async () => {
+  it('does not block buys when modeled slippage exceeds the UI tolerance', async () => {
     vi.mocked(getTokenPrice).mockResolvedValue({
       priceUsd: 1,
       priceSol: 0.01,
       liquidityUsd: 100,
     });
 
-    const trade = settleTrade(executeBuy(USER_ID, {
+    const trade = await settleTrade(executeBuy(USER_ID, {
       token_address: TOKEN_ADDRESS,
       amount_sol: 1,
       slippage_tolerance: 1,
     }));
 
-    await expect(trade).rejects.toThrow('exceeds tolerance');
-    expect(mockUsers.get(USER_ID).paper_balance).toBeCloseTo(100);
-    expect(mockPositions.get(USER_ID) ?? []).toHaveLength(0);
+    expect(trade.trade.slippage_applied).toBeCloseTo(49);
+    expect(mockUsers.get(USER_ID).paper_balance).toBeCloseTo(99);
+    expect(mockPositions.get(USER_ID) ?? []).toHaveLength(1);
   });
 });

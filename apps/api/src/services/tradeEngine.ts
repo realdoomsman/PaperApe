@@ -4,7 +4,6 @@ import {
   calculateTokensReceived,
   calculateSolReceived,
   calculateSellInitTokens,
-  DEFAULT_SLIPPAGE_TOLERANCE,
 } from '@paperape/shared';
 import type { Position, Trade, BuyRequest, SellRequest, SellInitRequest } from '@paperape/shared';
 import { db, isMockMode } from '../lib/firebase.js';
@@ -129,10 +128,6 @@ export async function executeBuy(userId: string, req: BuyRequest): Promise<{
   const liquidityUsd = priceData.liquidityUsd;
   const tradeAmountUsd = req.amount_sol * (priceData.priceUsd / priceData.priceSol);
   const slippage = calculateSlippage(tradeAmountUsd, liquidityUsd);
-  const slippageTolerance = req.slippage_tolerance ?? DEFAULT_SLIPPAGE_TOLERANCE;
-  if (slippage > slippageTolerance) {
-    throw new Error(`Slippage ${slippage.toFixed(2)}% exceeds tolerance ${slippageTolerance.toFixed(2)}%`);
-  }
   const effectiveSlippage = slippage;
   const fees = calculateFees(txSim.priorityFee);
   const tokensReceived = calculateTokensReceived(req.amount_sol, marketPriceSol, effectiveSlippage, fees);
