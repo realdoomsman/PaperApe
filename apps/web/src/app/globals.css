@@ -685,6 +685,28 @@ button{cursor:pointer;border:none;background:none;font-family:inherit;}
   .token-stats-row > div{min-width:calc(50% - 2px);}
   /* Position banner scroll */
   .pos-banner-scroll{-webkit-overflow-scrolling:touch;}
+  /* Dashboard grids stack on mobile */
+  .card-head{padding:10px 14px;}
+  .card-title{font-size:12px;}
+  /* Tables horizontal scroll on mobile */
+  .tbl{display:block;overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  .tbl th,.tbl td{white-space:nowrap;padding:10px 12px;font-size:11px;}
+  /* Tool grid stack */
+  .tool-grid{grid-template-columns:1fr !important;}
+  .tool-row{grid-template-columns:1fr !important;}
+  /* Wallet grid stack */
+  .w-grid{grid-template-columns:1fr !important;}
+  /* Modal full width */
+  .modal{padding:24px 20px;max-width:calc(100vw - 32px);}
+  .modal-panel{max-width:calc(100vw - 32px) !important;}
+  /* Leaderboard compact */
+  .lb-row{grid-template-columns:30px 1fr 80px !important;padding:10px 12px;font-size:11px;}
+  /* Landing hero */
+  .hero-btns{flex-direction:column;align-items:center;}
+  .hero-btns a,.hero-btns button{width:100%;}
+  .lnav{padding:0 12px;}
+  .lnav-links{display:none;}
+  .feat-grid{grid-template-columns:1fr !important;}
 }
 
 /* Mobile bottom nav */

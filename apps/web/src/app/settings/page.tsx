@@ -8,7 +8,6 @@ interface Settings {
   soundEnabled: boolean;
   tradeConfirmation: boolean;
   autoRefreshDiscover: string;
-  defaultSlippage: number;
   defaultPriority: string;
   showKeyboardShortcuts: boolean;
   theme: string;
@@ -18,7 +17,6 @@ const DEFAULTS: Settings = {
   soundEnabled: true,
   tradeConfirmation: true,
   autoRefreshDiscover: 'off',
-  defaultSlippage: 15,
   defaultPriority: 'normal',
   showKeyboardShortcuts: true,
   theme: 'dark',
@@ -67,7 +65,6 @@ export default function SettingsPage() {
       title: 'Trading',
       items: [
         { label: 'Trade Confirmation', desc: 'Show confirmation modal for large trades (>10 SOL)', type: 'toggle' as const, key: 'tradeConfirmation' as keyof Settings },
-        { label: 'Default Slippage', desc: 'Default slippage tolerance for new trades', type: 'select' as const, key: 'defaultSlippage' as keyof Settings, options: [{ v: 1, l: '1%' }, { v: 5, l: '5%' }, { v: 10, l: '10%' }, { v: 15, l: '15%' }, { v: 25, l: '25%' }] },
         { label: 'Priority Fee', desc: 'Default priority fee for trade execution', type: 'select' as const, key: 'defaultPriority' as keyof Settings, options: [{ v: 'normal', l: 'Normal' }, { v: 'turbo', l: 'Turbo' }, { v: 'yolo', l: 'YOLO' }] },
       ],
     },

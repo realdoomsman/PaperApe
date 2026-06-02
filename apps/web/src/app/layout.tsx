@@ -6,8 +6,23 @@ import ClientOverlays from '@/components/ClientOverlays';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'PaperApe — Solana Paper Trading Terminal',
-  description: 'Simulate on-chain Solana trades with zero risk. Paper trade inside BullX, Padre, Photon, and Axiom with live market data. 50+ educational lessons included.',
+  title: 'PaperApe - Paper Trade Solana Memecoins Risk-Free',
+  description: 'Practice trading Solana memecoins with simulated SOL. Real prices, zero risk. Track PnL, compete on leaderboards, and learn crypto trading strategies.',
+  keywords: ['paper trading', 'solana', 'memecoin', 'crypto trading simulator', 'paper trading app', 'solana trading'],
+  openGraph: {
+    title: 'PaperApe - Paper Trade Solana Memecoins',
+    description: 'Practice trading Solana memecoins with simulated SOL. Real prices, zero risk.',
+    siteName: 'PaperApe',
+    url: 'https://paperape.fun',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'PaperApe - Paper Trade Solana Memecoins',
+    description: 'Practice trading Solana memecoins with simulated SOL. Real prices, zero risk.',
+  },
+  robots: 'index, follow',
+  metadataBase: new URL('https://paperape.fun'),
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,

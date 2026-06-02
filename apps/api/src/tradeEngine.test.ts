@@ -80,9 +80,10 @@ describe('trade engine accounting', () => {
     expect(mockUsers.get(USER_ID).paper_balance).toBeCloseTo(99);
     expect(result.position.amount_sol).toBeCloseTo(1);
     expect(result.position.tokens_remaining).toBeGreaterThan(0);
-    expect(result.position.current_value).toBeLessThan(1);
+    expect(result.position.tokens_remaining).toBeCloseTo((1 - calculateFees()) / 0.01);
+    expect(result.position.current_value).toBeCloseTo(1 - calculateFees());
     expect(result.position.pnl_sol).toBeCloseTo(result.position.current_value - 1);
-    expect(result.trade.fee_applied).toBeCloseTo(calculateFees(0.0005));
+    expect(result.trade.fee_applied).toBeCloseTo(calculateFees());
   });
 
   it('tracks realized and unrealized PnL after a partial sell', async () => {
@@ -133,7 +134,7 @@ describe('trade engine accounting', () => {
     expect(mockUsers.get(USER_ID).paper_balance).toBeCloseTo(99 + sell.solReceived);
   });
 
-  it('does not block buys when modeled slippage exceeds the UI tolerance', async () => {
+  it('executes paper buys without modeled slippage even on thin liquidity', async () => {
     vi.mocked(getTokenPrice).mockResolvedValue({
       priceUsd: 1,
       priceSol: 0.01,
@@ -146,7 +147,9 @@ describe('trade engine accounting', () => {
       slippage_tolerance: 1,
     }));
 
-    expect(trade.trade.slippage_applied).toBeCloseTo(49);
+    expect(trade.trade.slippage_applied).toBe(0);
+    expect(trade.position.tokens_remaining).toBeCloseTo((1 - calculateFees()) / 0.01);
+    expect(trade.position.pnl_sol).toBeCloseTo(-calculateFees());
     expect(mockUsers.get(USER_ID).paper_balance).toBeCloseTo(99);
     expect(mockPositions.get(USER_ID) ?? []).toHaveLength(1);
   });

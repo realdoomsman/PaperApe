@@ -25,11 +25,6 @@ const ShareCard = dynamic(() => import('@/components/ShareCard'), { ssr: false }
 
 const FILTERS = ['All', 'Open', 'Closed', 'Moon Bags', 'Rugged'];
 
-function formatSlippagePercent(value: unknown, digits = 1) {
-  const slippage = Number(value);
-  return `${Number.isFinite(slippage) ? slippage.toFixed(digits) : (0).toFixed(digits)}%`;
-}
-
 export default function HistoryPage() {
   const { token: authToken, loading: authLoading } = useAuth();
   const [positions, setPositions] = useState<Position[]>([]);
@@ -147,7 +142,7 @@ export default function HistoryPage() {
         {tab === 'trades' && trades.length > 0 && (
           <button className="btn haptic" style={{ padding: '4px 12px', fontSize: 10, color: 'var(--cyan)', background: 'rgba(0,200,255,0.06)', border: '1px solid rgba(0,200,255,0.1)' }}
             onClick={() => {
-              const headers = ['Time', 'Type', 'Symbol', 'SOL Amount', 'Tokens', 'Price', 'Slippage'];
+              const headers = ['Time', 'Type', 'Symbol', 'SOL Amount', 'Tokens', 'Price'];
               const rows = trades.map((t: any) => [
                 new Date(t.created_at).toISOString(),
                 t.trade_type,
@@ -155,7 +150,6 @@ export default function HistoryPage() {
                 parseFloat(t.amount_sol ?? 0).toFixed(6),
                 parseFloat(t.amount_tokens ?? 0).toFixed(0),
                 parseFloat(t.execution_price ?? 0).toExponential(6),
-                formatSlippagePercent(t.slippage_applied, 2),
               ]);
               const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
               const blob = new Blob([csv], { type: 'text/csv' });
@@ -249,17 +243,16 @@ export default function HistoryPage() {
             </div>
           ) : (
             <>
-              <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.7fr 0.8fr 1fr 0.8fr 0.6fr', padding: '8px 14px', borderBottom: '1px solid var(--border-0)', fontSize: 10, fontWeight: 600, color: 'var(--t3)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                <span>Time</span><span>Type</span><span>SOL</span><span>Tokens</span><span>Price</span><span>Slip.</span>
+              <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.7fr 0.8fr 1fr 0.8fr', padding: '8px 14px', borderBottom: '1px solid var(--border-0)', fontSize: 10, fontWeight: 600, color: 'var(--t3)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                <span>Time</span><span>Type</span><span>SOL</span><span>Tokens</span><span>Price</span>
               </div>
               {trades.map(t => (
-                <div key={t.id} style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.7fr 0.8fr 1fr 0.8fr 0.6fr', padding: '10px 14px', borderBottom: '1px solid var(--border-0)', alignItems: 'center', fontSize: 12 }}>
+                <div key={t.id} style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.7fr 0.8fr 1fr 0.8fr', padding: '10px 14px', borderBottom: '1px solid var(--border-0)', alignItems: 'center', fontSize: 12 }}>
                   <span className="mono" style={{ fontSize: 11, color: 'var(--t2)' }}>{new Date(t.created_at).toLocaleString()}</span>
                   <span style={{ fontWeight: 600, color: t.trade_type === 'buy' ? 'var(--green)' : 'var(--red)' }}>{t.trade_type === 'buy' ? 'BUY' : 'SELL'}</span>
                   <span className="mono" style={{ color: 'var(--t1)' }}>{parseFloat(t.amount_sol ?? 0).toFixed(4)}</span>
                   <span className="mono" style={{ color: 'var(--t1)' }}>{parseFloat(t.amount_tokens ?? 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
                   <span className="mono" style={{ color: 'var(--t1)' }}>{parseFloat(t.execution_price ?? 0) < 0.001 ? parseFloat(t.execution_price ?? 0).toExponential(3) : parseFloat(t.execution_price ?? 0).toFixed(6)}</span>
-                  <span className="mono" style={{ color: 'var(--t3)' }}>{formatSlippagePercent(t.slippage_applied)}</span>
                 </div>
               ))}
             </>

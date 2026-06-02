@@ -76,9 +76,11 @@ function TerminalInner() {
   const [recentSearches, setRecentSearches] = useState<{ symbol: string; name: string; address: string; image: string | null }[]>([]);
   const [tab, setTab] = useState<'buy' | 'sell' | 'dca'>('buy');
   const [amount, setAmount] = useState('1');
-  const [slippage, setSlippage] = useState(15);
   const [balance, setBalance] = useState<number | null>(null);
   const [positions, setPositions] = useState<Position[]>([]);
+  const positionsRef = useRef<Position[]>([]);
+  useEffect(() => { positionsRef.current = positions; }, [positions]);
+  const wsRef = useRef<WebSocket | null>(null);
   const [toasts, setToasts] = useState<{ id: number; msg: string; type: string; createdAt: number }[]>([]);
   const toastIdRef = useRef(0);
   const [loading, setLoading] = useState(false);
@@ -119,17 +121,6 @@ function TerminalInner() {
   // ─── Load Recent Searches ──────────────────────────────
   useEffect(() => {
     try { const s = localStorage.getItem('pa_recent_tokens'); if (s) setRecentSearches(JSON.parse(s)); } catch {}
-  }, []);
-
-  // ─── Load Saved Settings from localStorage ─────────────
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem('paperape_settings');
-      if (raw) {
-        const s = JSON.parse(raw);
-        if (s.defaultSlippage != null) setSlippage(s.defaultSlippage);
-      }
-    } catch {}
   }, []);
 
   // ─── Fetch Real SOL Price + Network Status ─────────────
@@ -202,11 +193,12 @@ function TerminalInner() {
           // Subscribe to the currently-viewed token
           ws?.send(JSON.stringify({ type: 'subscribe_price', token_address: tokenAddress }));
           // Also subscribe to ALL open position tokens for multi-position PnL
-          positions.forEach(p => {
+          positionsRef.current.forEach(p => {
             if (p.tokenAddress && p.tokenAddress !== tokenAddress) {
               ws?.send(JSON.stringify({ type: 'subscribe_price', token_address: p.tokenAddress }));
             }
           });
+          wsRef.current = ws ?? null;
         };
 
         ws.onmessage = (event) => {
@@ -268,18 +260,31 @@ function TerminalInner() {
       if (ws) {
         try {
           ws.send(JSON.stringify({ type: 'unsubscribe_price', token_address: tokenAddress }));
-          positions.forEach(p => {
+          positionsRef.current.forEach(p => {
             if (p.tokenAddress && p.tokenAddress !== tokenAddress) {
               ws?.send(JSON.stringify({ type: 'unsubscribe_price', token_address: p.tokenAddress }));
             }
           });
         } catch {}
         ws.close();
+        wsRef.current = null;
       }
       clearInterval(fullRefresh);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tokenAddress, fetchTokenData]);
+
+  // Subscribe newly-bought tokens to WS price feed immediately
+  useEffect(() => {
+    const ws = wsRef.current;
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    positions.forEach(p => {
+      if (p.tokenAddress && p.tokenAddress !== tokenAddress) {
+        ws.send(JSON.stringify({ type: 'subscribe_price', token_address: p.tokenAddress }));
+      }
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [positions.length, tokenAddress]);
 
   // ─── Derived: effective token address ─────────────────
   const effectiveAddress = tokenAddress || symbolToAddress(selectedToken);
@@ -486,7 +491,7 @@ function TerminalInner() {
     try {
       if (tab === 'buy') {
         const res = await apiRequest('POST', '/trades/buy', {
-          token_address: effectiveAddress, amount_sol: amt, slippage_tolerance: slippage,
+          token_address: effectiveAddress, amount_sol: amt,
         }, authToken || undefined);
         if (!res.success) { showToast(res.error || 'Trade failed', 'error'); setLoading(false); return; }
         const { position: apiPos, trade: apiTrade } = res.data as any;
@@ -674,10 +679,6 @@ function TerminalInner() {
               <div style={{ padding: '10px 12px', background: 'var(--bg-2)', borderRadius: 8 }}>
                 <div style={{ fontSize: 9, color: 'var(--t3)', textTransform: 'uppercase', letterSpacing: 0.5 }}>Amount</div>
                 <div className="mono" style={{ fontSize: 14, fontWeight: 700, color: 'var(--t0)' }}>{amount} SOL</div>
-              </div>
-              <div style={{ padding: '10px 12px', background: 'var(--bg-2)', borderRadius: 8 }}>
-                <div style={{ fontSize: 9, color: 'var(--t3)', textTransform: 'uppercase', letterSpacing: 0.5 }}>Slippage</div>
-                <div className="mono" style={{ fontSize: 14, fontWeight: 700, color: 'var(--t0)' }}>{slippage}%</div>
               </div>
             </div>
             <div style={{ padding: '8px 12px', background: 'rgba(255,179,0,0.06)', border: '1px solid var(--gold)', borderRadius: 6, marginBottom: 18, fontSize: 11, color: 'var(--gold)' }}>
@@ -1179,12 +1180,6 @@ function TerminalInner() {
                       <button key={v} className={`preset haptic ${amount === String(v) ? 'on' : ''}`} onClick={() => setAmount(String(v))} style={{ fontSize: 10, padding: '4px 8px' }}>{v}</button>
                     ))}
                   </div>
-                  <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--t3)', marginBottom: 6, letterSpacing: 0.5, textTransform: 'uppercase' }}>Slippage Tolerance</div>
-                  <div style={{ display: 'flex', gap: 4, marginBottom: 14 }}>
-                    {[1, 5, 10, 15, 25].map(v => (
-                      <button key={v} className={`preset haptic ${slippage === v ? 'on' : ''}`} onClick={() => setSlippage(v)} style={{ fontSize: 10 }}>{v}%</button>
-                    ))}
-                  </div>
                   <div style={{ padding: '10px 12px', background: 'var(--bg-2)', border: '1px dashed var(--border-1)', borderRadius: 4, marginBottom: 14 }}>
                     <div style={{ fontSize: 9, fontWeight: 600, color: 'var(--t3)', letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 3 }}>Est. Tokens Received</div>
                     <div className="mono" style={{ fontSize: 18, fontWeight: 700, color: 'var(--t0)' }}>
@@ -1319,7 +1314,7 @@ function TerminalInner() {
                       try {
                         const res = await apiRequest('POST', '/trades/dca', {
                           token_address: effectiveAddress, token_symbol: displaySymbol, amount_per_buy: parseFloat(dcaAmount),
-                          interval: dcaInterval, total_buys: parseInt(dcaTotalBuys), slippage,
+                          interval: dcaInterval, total_buys: parseInt(dcaTotalBuys),
                         }, authToken || undefined);
                         if (res.success) {
                           showToast(`DCA started: ${dcaTotalBuys} buys of ${dcaAmount} SOL`, 'buy');

@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import AppShell from '@/components/AppShell';
+import OnboardingGuide from '@/components/OnboardingGuide';
 import { useAuth } from '@/components/AuthContext';
 import { useLoginHref } from '@/components/AuthGate';
 import { useMode } from '@/components/ModeContext';
@@ -224,6 +225,7 @@ export default function DashboardPage() {
 
   return (
     <AppShell balance={totalPortfolioValue}>
+      {isAuthed && <OnboardingGuide />}
       {showFlex && (
         <ShareCard
           tokenSymbol="PORTFOLIO"
