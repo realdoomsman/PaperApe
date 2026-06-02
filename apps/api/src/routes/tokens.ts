@@ -43,7 +43,35 @@ const SOL_PRICE_TTL = 30_000;
 // Per-token detail cache to reduce DexScreener API calls
 const tokenDetailCache = new Map<string, { data: any; time: number }>();
 const TOKEN_DETAIL_TTL = 15_000; // 15s cache per token
+const TOKEN_DETAIL_MAX_SIZE = 500; // Max entries to prevent unbounded growth
 const pendingTokenFetches = new Map<string, Promise<any>>(); // Dedup concurrent requests
+
+// Periodic cleanup: remove stale entries every 5 minutes
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, entry] of tokenDetailCache) {
+    if (now - entry.time >= TOKEN_DETAIL_TTL) {
+      tokenDetailCache.delete(key);
+    }
+  }
+}, 5 * 60 * 1000);
+
+// Helper to add to cache with size cap
+function cacheTokenDetail(address: string, data: any) {
+  // Evict oldest entries if at capacity
+  if (tokenDetailCache.size >= TOKEN_DETAIL_MAX_SIZE) {
+    let oldestKey: string | null = null;
+    let oldestTime = Infinity;
+    for (const [key, entry] of tokenDetailCache) {
+      if (entry.time < oldestTime) {
+        oldestTime = entry.time;
+        oldestKey = key;
+      }
+    }
+    if (oldestKey) tokenDetailCache.delete(oldestKey);
+  }
+  tokenDetailCache.set(address, { data, time: Date.now() });
+}
 
 // ─── Helpers ────────────────────────────────────────────
 
@@ -625,7 +653,7 @@ tokensRouter.get('/:address', async (req, res) => {
     };
 
     // Cache for future requests
-    tokenDetailCache.set(address, { data: responseData, time: Date.now() });
+    cacheTokenDetail(address, responseData);
 
     res.json(responseData);
   } catch (err: any) {

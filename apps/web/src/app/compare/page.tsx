@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import AppShell from '@/components/AppShell';
 import { apiRequest } from '@/lib/api';
 import { normalizeToken } from '@/lib/mappers';
@@ -56,13 +56,19 @@ export default function ComparePage() {
   const [loadingB, setLoadingB] = useState(false);
   const [resultsA, setResultsA] = useState<any[]>([]);
   const [resultsB, setResultsB] = useState<any[]>([]);
+  const debounceA = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const debounceB = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const search = async (q: string, side: 'A' | 'B') => {
-    if (!q.trim()) return;
+  const search = useCallback((q: string, side: 'A' | 'B') => {
+    const timerRef = side === 'A' ? debounceA : debounceB;
+    if (timerRef.current) clearTimeout(timerRef.current);
     const setResults = side === 'A' ? setResultsA : setResultsB;
-    const r = await apiRequest('GET', `/tokens/search?q=${encodeURIComponent(q)}`);
-    if (r.success && r.data?.tokens) setResults(r.data.tokens.slice(0, 5));
-  };
+    if (!q.trim()) { setResults([]); return; }
+    timerRef.current = setTimeout(async () => {
+      const r = await apiRequest('GET', `/tokens/search?q=${encodeURIComponent(q)}`);
+      if (r.success && r.data?.tokens) setResults(r.data.tokens.slice(0, 5));
+    }, 400);
+  }, []);
 
   const selectToken = async (t: any, side: 'A' | 'B') => {
     const setLoading = side === 'A' ? setLoadingA : setLoadingB;
@@ -73,20 +79,24 @@ export default function ComparePage() {
     setLoading(true);
     setSearch(t.symbol || t.name);
     setResults([]);
-    const r = await apiRequest('GET', `/tokens/${t.address}`);
-    if (r.success && r.data?.token) {
-      const token = normalizeToken(r.data.token);
-      setToken({
-        name: token.name || t.name,
-        symbol: token.symbol || t.symbol,
-        address: t.address,
-        priceUsd: token.priceUsd,
-        volume24h: token.volume24h,
-        liquidity: token.liquidity,
-        priceChange24h: token.priceChange24h,
-        mcap: token.marketCap,
-        image: token.image ?? undefined,
-      });
+    try {
+      const r = await apiRequest('GET', `/tokens/${t.address}`);
+      if (r.success && r.data?.token) {
+        const token = normalizeToken(r.data.token);
+        setToken({
+          name: token.name || t.name,
+          symbol: token.symbol || t.symbol,
+          address: t.address,
+          priceUsd: token.priceUsd,
+          volume24h: token.volume24h,
+          liquidity: token.liquidity,
+          priceChange24h: token.priceChange24h,
+          mcap: token.marketCap,
+          image: token.image ?? undefined,
+        });
+      }
+    } catch {
+      // silently handle fetch error
     }
     setLoading(false);
   };

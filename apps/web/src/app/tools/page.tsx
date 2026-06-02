@@ -31,12 +31,13 @@ export default function ToolsPage() {
 
   // Risk Score
   const [rsAddr, setRsAddr] = useState('');
-  const [rsResult, setRsResult] = useState<null | { score: number; lp: string; mint: string; honey: string; freeze: string }>(null);
+  const [rsResult, setRsResult] = useState<null | { score: number; lp: string; mint: string; honey: string; freeze: string; error?: string }>(null);
   const [rsLoading, setRsLoading] = useState(false);
 
   const checkRisk = useCallback(async () => {
     if (rsAddr.length < 10) return;
     setRsLoading(true);
+    setRsResult(null);
 
     try {
       const res = await apiRequest('GET', `/tokens/rugcheck/${rsAddr}`);
@@ -53,12 +54,7 @@ export default function ToolsPage() {
         throw new Error('API error');
       }
     } catch {
-      // Fallback to quick simulation
-      await new Promise(r => setTimeout(r, 500));
-      let hash = 0;
-      for (let i = 0; i < rsAddr.length; i++) hash = ((hash << 5) - hash + rsAddr.charCodeAt(i)) | 0;
-      const score = 25 + (Math.abs(hash) % 60);
-      setRsResult({ score, lp: 'Unknown', mint: 'Unknown', honey: 'Unknown', freeze: 'Unknown' });
+      setRsResult({ score: 0, lp: '-', mint: '-', honey: '-', freeze: '-', error: 'Could not analyze token — try again' });
     }
     setRsLoading(false);
   }, [rsAddr]);
@@ -120,6 +116,13 @@ export default function ToolsPage() {
           </div>
           {rsResult && (
             <div className="tool-result">
+              {rsResult.error ? (
+                <div style={{ textAlign: 'center', padding: '12px 0' }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--red)', marginBottom: 8 }}>{rsResult.error}</div>
+                  <button className="btn primary" onClick={checkRisk} style={{ fontSize: 11, padding: '6px 16px' }}>Retry</button>
+                </div>
+              ) : (
+                <>
               <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 12 }}>
                 <div><div className="tool-result-label">Safety Score</div><div className="tool-result-val" style={{ color: rsResult.score > 70 ? 'var(--green)' : rsResult.score > 40 ? 'var(--gold)' : 'var(--red)' }}>{rsResult.score}/100</div></div>
               </div>
@@ -129,6 +132,8 @@ export default function ToolsPage() {
                 <div><div className="tool-label">Honeypot</div><div className="mono" style={{ color: rsResult.honey === 'Clear' ? 'var(--green)' : 'var(--red)', fontSize: 12, fontWeight: 600 }}>{rsResult.honey}</div></div>
                 <div><div className="tool-label">Freeze Auth</div><div className="mono" style={{ color: rsResult.freeze === 'Revoked' ? 'var(--green)' : 'var(--red)', fontSize: 12, fontWeight: 600 }}>{rsResult.freeze}</div></div>
               </div>
+                </>
+              )}
             </div>
           )}
           {mode === 'beginner' && <p style={{ fontSize: 11, color: 'var(--t3)', marginTop: 10, lineHeight: 1.6 }}>Checks LP lock status, mint authority, and honeypot indicators. Higher scores are safer. In production this uses Helius RPC data.</p>}

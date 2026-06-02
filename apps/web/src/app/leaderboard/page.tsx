@@ -27,7 +27,7 @@ export default function LeaderboardPage() {
     apiRequest('GET', `/leaderboard/${tab}`).then(r => {
       if (r.success && r.data?.rankings) setEntries(r.data.rankings);
       setLoading(false);
-    });
+    }).catch(() => { setLoading(false); });
   }, [tab]);
 
   const userEntry = entries.find(e => user?.uid && e.id?.includes(user.uid));

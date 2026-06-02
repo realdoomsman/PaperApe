@@ -1,4 +1,5 @@
 import { db, isMockMode } from '../lib/firebase.js';
+import { FieldValue } from 'firebase-admin/firestore';
 import { getAuth } from 'firebase-admin/auth';
 
 interface FirebaseUser {
@@ -119,10 +120,9 @@ export async function fundUser(userId: string, amount: number) {
   const docRef = db.collection('users').doc(userId);
   const snapshot = await docRef.get();
   if (!snapshot.exists) throw new Error('User not found');
-  const data = snapshot.data()!;
-  const newBalance = (data.paper_balance ?? 0) + amount;
-  await docRef.update({ paper_balance: newBalance });
-  return { ...data, id: userId, paper_balance: newBalance };
+  await docRef.update({ paper_balance: FieldValue.increment(amount) });
+  const updated = await docRef.get();
+  return { ...updated.data(), id: userId };
 }
 
 // Export for trade engine mock usage

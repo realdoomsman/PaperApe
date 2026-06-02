@@ -53,10 +53,10 @@ export default function HistoryPage() {
     if (!authToken) return;
     apiRequest('GET', '/trades/positions', undefined, authToken).then(r => {
       if (r.success && r.data?.positions) setPositions(r.data.positions);
-    });
+    }).catch(() => {});
     apiRequest('GET', '/trades/history', undefined, authToken).then(r => {
       if (r.success && r.data?.trades) setTrades(r.data.trades);
-    });
+    }).catch(() => {});
   }, [authToken]);
 
   const filtered = filter === 'All' ? positions

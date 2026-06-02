@@ -16,6 +16,7 @@ import { startAutoOrderTicker } from './services/autoOrders.js';
 import { startDCATicker } from './services/dcaEngine.js';
 
 const app = express();
+app.set('trust proxy', 1);
 const port = parseInt(process.env.PORT ?? '3001', 10);
 
 // ─── Middleware ──────────────────────────────────────────

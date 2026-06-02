@@ -9,7 +9,7 @@ import { useMode } from '@/components/ModeContext';
 import { apiRequest } from '@/lib/api';
 import { getApiBase, getWebSocketBase } from '@/lib/config';
 import { toUiAlert, toUiDCAOrder, type UiDCAOrder, type UiPriceAlert } from '@/lib/mappers';
-import { symbolToAddress, genId } from '@/lib/engine';
+import { symbolToAddress } from '@/lib/engine';
 
 // Extended position with token address for live price tracking
 interface Position {
@@ -120,6 +120,18 @@ function TerminalInner() {
   // ─── Load Recent Searches ──────────────────────────────
   useEffect(() => {
     try { const s = localStorage.getItem('pa_recent_tokens'); if (s) setRecentSearches(JSON.parse(s)); } catch {}
+  }, []);
+
+  // ─── Load Saved Settings from localStorage ─────────────
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('paperape_settings');
+      if (raw) {
+        const s = JSON.parse(raw);
+        if (s.defaultSlippage != null) setSlippage(s.defaultSlippage);
+        if (s.defaultPriority) setPriority(s.defaultPriority);
+      }
+    } catch {}
   }, []);
 
   // ─── Fetch Real SOL Price + Network Status ─────────────
@@ -451,12 +463,14 @@ function TerminalInner() {
       signInForAction(tab === 'buy' ? 'paper trading' : 'selling');
       return;
     }
-    const amt = parseFloat(amount);
-    if (!amt || amt <= 0) return;
-    // Require confirmation for large trades (>10 SOL or >10% of balance)
-    if (tab === 'buy' && (amt > 10 || amt > displayBalance * 0.1)) {
-      setShowConfirm(true);
-      return;
+    if (tab === 'buy') {
+      const amt = parseFloat(amount);
+      if (!amt || amt <= 0) return;
+      // Require confirmation for large trades (>10 SOL or >10% of balance)
+      if (amt > 10 || amt > displayBalance * 0.1) {
+        setShowConfirm(true);
+        return;
+      }
     }
     executeTrade();
   };
@@ -469,7 +483,7 @@ function TerminalInner() {
     }
     setShowConfirm(false);
     const amt = parseFloat(amount);
-    if (!amt || amt <= 0) return;
+    if (tab === 'buy' && (!amt || amt <= 0)) return;
     setLoading(true);
     try {
       if (tab === 'buy') {
