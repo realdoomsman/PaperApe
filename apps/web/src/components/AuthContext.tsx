@@ -11,6 +11,7 @@ import {
   getIdToken,
   sendVerificationEmail,
   sendPasswordReset,
+  subscribeToPositions,
   type User,
 } from '@/lib/firebase';
 import { doc, onSnapshot } from 'firebase/firestore';
@@ -119,8 +120,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.warn('[PaperApe] User doc listener error:', err);
     });
 
+    const unsubPositions = subscribeToPositions(user.uid, (payload) => {
+      const position = payload.new;
+      const id = String(position?.id ?? '');
+      if (!id) return;
+
+      setServerPositions(prev => {
+        if (payload.event === 'REMOVED' || position.status !== 'open') {
+          return prev.filter(p => p.id !== id);
+        }
+
+        const idx = prev.findIndex(p => p.id === id);
+        if (idx === -1) return [position, ...prev];
+
+        const next = [...prev];
+        next[idx] = position;
+        return next;
+      });
+    });
+
     return () => {
       unsubUser();
+      unsubPositions();
     };
   }, [user?.uid]);
 

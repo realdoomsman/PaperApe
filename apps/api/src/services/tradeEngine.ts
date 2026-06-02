@@ -101,6 +101,15 @@ function tradeTokenFields(position: any, priceData: { priceUsd: number }, tokenM
   };
 }
 
+async function syncPrimaryWalletBalance(userId: string, delta: number) {
+  try {
+    const { applyPrimaryWalletBalanceDelta } = await import('../routes/wallets.js');
+    await applyPrimaryWalletBalanceDelta(userId, delta);
+  } catch (err) {
+    console.warn('Primary wallet balance sync failed:', err);
+  }
+}
+
 // ─── Execute Buy ────────────────────────────────────────
 export async function executeBuy(userId: string, req: BuyRequest): Promise<{
   position: any;
@@ -215,6 +224,7 @@ export async function executeBuy(userId: string, req: BuyRequest): Promise<{
     mockTrades.push(trade);
 
     user.paper_balance -= req.amount_sol;
+    await syncPrimaryWalletBalance(userId, -req.amount_sol);
     return { position, trade, congestion: txSim.congestion };
   }
 
@@ -333,6 +343,8 @@ export async function executeBuy(userId: string, req: BuyRequest): Promise<{
     return { position, trade: { id: newTradeRef.id, ...tradeData } };
   });
 
+  await syncPrimaryWalletBalance(userId, -req.amount_sol);
+
   return { position: result.position, trade: result.trade, congestion: txSim.congestion };
 }
 
@@ -395,6 +407,7 @@ export async function executeSell(userId: string, req: SellRequest): Promise<{
 
     const user = mockUsers.get(userId);
     if (user) user.paper_balance += solReceived;
+    await syncPrimaryWalletBalance(userId, solReceived);
     return { position, trade, solReceived };
   }
 
@@ -490,6 +503,8 @@ export async function executeSell(userId: string, req: SellRequest): Promise<{
     };
   });
 
+  await syncPrimaryWalletBalance(userId, result.solReceived);
+
   return result;
 }
 
@@ -545,6 +560,7 @@ export async function executeSellInit(userId: string, req: SellInitRequest): Pro
 
     const user = mockUsers.get(userId);
     if (user) user.paper_balance += solReceived;
+    await syncPrimaryWalletBalance(userId, solReceived);
     return { position, trade, solReceived, moonBagTokens };
   }
 
@@ -635,6 +651,8 @@ export async function executeSellInit(userId: string, req: SellInitRequest): Pro
       moonBagTokens,
     };
   });
+
+  await syncPrimaryWalletBalance(userId, result.solReceived);
 
   return result;
 }
