@@ -25,6 +25,11 @@ const ShareCard = dynamic(() => import('@/components/ShareCard'), { ssr: false }
 
 const FILTERS = ['All', 'Open', 'Closed', 'Moon Bags', 'Rugged'];
 
+function formatSlippagePercent(value: unknown, digits = 1) {
+  const slippage = Number(value);
+  return `${Number.isFinite(slippage) ? slippage.toFixed(digits) : (0).toFixed(digits)}%`;
+}
+
 export default function HistoryPage() {
   const { token: authToken, loading: authLoading } = useAuth();
   const [positions, setPositions] = useState<Position[]>([]);
@@ -145,7 +150,7 @@ export default function HistoryPage() {
                 parseFloat(t.amount_sol ?? 0).toFixed(6),
                 parseFloat(t.amount_tokens ?? 0).toFixed(0),
                 parseFloat(t.execution_price ?? 0).toExponential(6),
-                (parseFloat(t.slippage_applied ?? 0) * 100).toFixed(2) + '%',
+                formatSlippagePercent(t.slippage_applied, 2),
               ]);
               const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
               const blob = new Blob([csv], { type: 'text/csv' });
@@ -249,7 +254,7 @@ export default function HistoryPage() {
                   <span className="mono" style={{ color: 'var(--t1)' }}>{parseFloat(t.amount_sol ?? 0).toFixed(4)}</span>
                   <span className="mono" style={{ color: 'var(--t1)' }}>{parseFloat(t.amount_tokens ?? 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
                   <span className="mono" style={{ color: 'var(--t1)' }}>{parseFloat(t.execution_price ?? 0) < 0.001 ? parseFloat(t.execution_price ?? 0).toExponential(3) : parseFloat(t.execution_price ?? 0).toFixed(6)}</span>
-                  <span className="mono" style={{ color: 'var(--t3)' }}>{(parseFloat(t.slippage_applied ?? 0) * 100).toFixed(1)}%</span>
+                  <span className="mono" style={{ color: 'var(--t3)' }}>{formatSlippagePercent(t.slippage_applied)}</span>
                 </div>
               ))}
             </>

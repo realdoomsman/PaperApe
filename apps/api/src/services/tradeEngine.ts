@@ -701,6 +701,61 @@ export async function updatePositionPrice(userId: string, positionId: string, cu
   });
 }
 
+export async function resetUserOpenPositions(userId: string): Promise<number> {
+  const now = new Date().toISOString();
+  const resetFields = {
+    status: 'closed',
+    amount_sol: 0,
+    tokens_remaining: 0,
+    current_value: 0,
+    realized_pnl_sol: 0,
+    pnl_sol: 0,
+    pnl_percent: 0,
+    closed_at: now,
+    reset_at: now,
+  };
+
+  if (isMockMode) {
+    const positions = mockPositions.get(userId) ?? [];
+    let closed = 0;
+    for (const position of positions) {
+      if (position.status === 'open') {
+        Object.assign(position, resetFields);
+        closed++;
+      }
+    }
+    return closed;
+  }
+
+  const snapshot = await userPositionsCol(userId)
+    .where('status', '==', 'open')
+    .get();
+
+  if (snapshot.empty) return 0;
+
+  let batch = db.batch();
+  let batchOps = 0;
+  let closed = 0;
+
+  for (const doc of snapshot.docs) {
+    batch.update(doc.ref, resetFields);
+    batchOps++;
+    closed++;
+
+    if (batchOps === 450) {
+      await batch.commit();
+      batch = db.batch();
+      batchOps = 0;
+    }
+  }
+
+  if (batchOps > 0) {
+    await batch.commit();
+  }
+
+  return closed;
+}
+
 // ─── Get User Trades ────────────────────────────────────
 export async function getUserTrades(userId: string): Promise<any[]> {
   if (isMockMode) {

@@ -15,7 +15,7 @@ vi.mock('./services/birdeye.js', () => ({
   getTokenOverview: vi.fn(),
 }));
 
-const { executeBuy, executeSell, mockPositions } = await import('./services/tradeEngine.js');
+const { executeBuy, executeSell, mockPositions, resetUserOpenPositions } = await import('./services/tradeEngine.js');
 const { mockUsers } = await import('./services/auth.js');
 const { getTokenPrice, getTokenOverview } = await import('./services/birdeye.js');
 
@@ -149,5 +149,26 @@ describe('trade engine accounting', () => {
     expect(trade.trade.slippage_applied).toBeCloseTo(49);
     expect(mockUsers.get(USER_ID).paper_balance).toBeCloseTo(99);
     expect(mockPositions.get(USER_ID) ?? []).toHaveLength(1);
+  });
+
+  it('closes and neutralizes open positions during account reset', async () => {
+    const buy = await settleTrade(executeBuy(USER_ID, {
+      token_address: TOKEN_ADDRESS,
+      amount_sol: 1,
+      slippage_tolerance: 1,
+    }));
+
+    const closed = await resetUserOpenPositions(USER_ID);
+    const positions = mockPositions.get(USER_ID) ?? [];
+
+    expect(closed).toBe(1);
+    expect(positions).toHaveLength(1);
+    expect(buy.position.status).toBe('closed');
+    expect(buy.position.amount_sol).toBe(0);
+    expect(buy.position.tokens_remaining).toBe(0);
+    expect(buy.position.current_value).toBe(0);
+    expect(buy.position.pnl_sol).toBe(0);
+    expect(buy.position.pnl_percent).toBe(0);
+    expect(positions.filter(p => p.status === 'open')).toHaveLength(0);
   });
 });

@@ -157,6 +157,8 @@ walletsRouter.post('/', async (req: any, res) => {
 walletsRouter.post('/reset', async (req: any, res) => {
   try {
     const userId = req.user.id;
+    const { resetUserOpenPositions } = await import('../services/tradeEngine.js');
+    const closedPositions = await resetUserOpenPositions(userId);
 
     if (isMockMode) {
       const user = mockUsers.get(userId);
@@ -170,7 +172,7 @@ walletsRouter.post('/reset', async (req: any, res) => {
         const primary = wallets.find(w => w.isPrimary);
         if (primary) primary.balance = 100;
       }
-      return res.json({ success: true, data: { balance: 100 } });
+      return res.json({ success: true, data: { balance: 100, closed_positions: closedPositions } });
     }
 
     // Firestore: reset primary wallet balance and user paper_balance
@@ -181,7 +183,7 @@ walletsRouter.post('/reset', async (req: any, res) => {
       await walletSnap.docs[0].ref.update({ balance: 100 });
     }
 
-    res.json({ success: true, data: { balance: 100 } });
+    res.json({ success: true, data: { balance: 100, closed_positions: closedPositions } });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
   }
