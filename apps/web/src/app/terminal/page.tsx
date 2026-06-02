@@ -57,7 +57,7 @@ export default function TerminalPage() {
 
 function TerminalInner() {
   const { mode } = useMode();
-  const { token: authToken, loading: authLoading } = useAuth();
+  const { token: authToken, loading: authLoading, serverBalance, serverPositions } = useAuth();
   const loginHref = useLoginHref();
   const searchParams = useSearchParams();
 
@@ -369,6 +369,42 @@ function TerminalInner() {
     }).catch((err) => { console.error('[PA] Failed to load positions:', err); });
   }, [authToken]);
 
+  // ─── Fallback: use serverPositions from AuthContext (Firestore realtime) ───
+  useEffect(() => {
+    if (positions.length === 0 && serverPositions.length > 0) {
+      const hydrated: Position[] = serverPositions.map((p: any) => {
+        const entryPrice = parseFloat(p.entry_price) || 0;
+        const currentPrice = parseFloat(p.current_price) || entryPrice;
+        const tokens = parseFloat(p.tokens_remaining) || 0;
+        const amountSol = parseFloat(p.amount_sol) || 0;
+        const realizedPnl = parseFloat(p.realized_pnl_sol) || 0;
+        const currentValue = tokens * currentPrice;
+        const pnl = realizedPnl + currentValue - amountSol;
+        const pnlPercent = amountSol > 0 ? (pnl / amountSol) * 100 : (currentValue > 0 ? 999 : 0);
+        return {
+          id: p.id,
+          symbol: p.token_symbol || '???',
+          name: p.token_name || 'Unknown',
+          tokenAddress: p.token_address || '',
+          image: p.token_image || null,
+          entryPrice,
+          entryPriceUsd: parseFloat(p.entry_price_usd) || 0,
+          amount: amountSol,
+          tokens,
+          currentPrice,
+          currentPriceUsd: parseFloat(p.current_price_usd) || 0,
+          currentValue,
+          pnl,
+          pnlPercent,
+          realizedPnl,
+          isMoonBag: p.is_moon_bag || false,
+          timestamp: new Date(p.opened_at || p.created_at || Date.now()).getTime(),
+        };
+      });
+      setPositions(hydrated);
+    }
+  }, [serverPositions, positions.length]);
+
   const playTradeSound = useCallback((type: string) => {
     try {
       const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
@@ -454,7 +490,7 @@ function TerminalInner() {
 
   const estTokens = displayPriceSol > 0 ? parseFloat(amount || '0') / displayPriceSol : 0;
 
-  const displayBalance = balance ?? 0;
+  const displayBalance = balance ?? serverBalance ?? 0;
 
   // ─── Trade Execution ─────────────────────────────────
   // Trade confirmation state
