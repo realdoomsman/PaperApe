@@ -12,6 +12,29 @@ interface FirebaseUser {
 // ─── In-Memory Mock Store ───────────────────────────────
 const mockUsers: Map<string, any> = new Map();
 
+function decodeJwtPayload(idToken: string): Record<string, any> | null {
+  const payload = idToken.split('.')[1];
+  if (!payload) return null;
+
+  try {
+    return JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
+  } catch {
+    return null;
+  }
+}
+
+function getMockFirebaseUser(idToken: string): FirebaseUser {
+  const payload = decodeJwtPayload(idToken);
+  const uid = payload?.user_id ?? payload?.sub ?? idToken.slice(0, 8) ?? 'default';
+
+  return {
+    id: `mock-user-${uid}`,
+    email: payload?.email ?? 'mockape@paperape.fun',
+    name: payload?.name ?? 'Mock Ape',
+    picture: payload?.picture,
+  };
+}
+
 function getMockUser(uid: string, name?: string, email?: string) {
   if (!mockUsers.has(uid)) {
     mockUsers.set(uid, {
@@ -33,12 +56,9 @@ function getMockUser(uid: string, name?: string, email?: string) {
  */
 export async function verifyFirebaseToken(idToken: string): Promise<FirebaseUser | null> {
   if (isMockMode) {
-    // In mock mode, accept any token
-    return {
-      id: `mock-user-${idToken.slice(0, 8)}`,
-      email: 'mockape@paperape.fun',
-      name: 'Mock Ape',
-    };
+    // In mock mode, accept any token but keep real Firebase JWTs mapped to
+    // their payload UID so local paper-trading state stays stable per user.
+    return getMockFirebaseUser(idToken);
   }
 
   try {

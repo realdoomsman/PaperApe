@@ -5,6 +5,44 @@ import { updatePositionPrice, mockPositions } from './tradeEngine.js';
 
 let rugInterval: ReturnType<typeof setInterval> | null = null;
 
+function positiveNumber(value: unknown): number | null {
+  const n = Number(value);
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+export function shouldFlagRuggedPosition(position: any, liquidityUsd: number, priceSol: number) {
+  const currentLiquidity = positiveNumber(liquidityUsd);
+  const currentPrice = positiveNumber(priceSol);
+  if (currentLiquidity == null || currentPrice == null || currentLiquidity >= RUG_LIQUIDITY_THRESHOLD_USD) {
+    return false;
+  }
+
+  const entryLiquidity = positiveNumber(position.entry_liquidity_usd ?? position.liquidity_usd);
+  return entryLiquidity != null && entryLiquidity >= RUG_LIQUIDITY_THRESHOLD_USD;
+}
+
+function updateMockPositionPrice(pos: any, priceData: { priceSol: number; priceUsd: number; liquidityUsd: number }) {
+  const priceSol = positiveNumber(priceData.priceSol);
+  if (priceSol == null) return;
+
+  const remaining = Number(pos.tokens_remaining ?? 0);
+  const costBasis = Number(pos.amount_sol ?? 0);
+  const realizedPnl = Number(pos.realized_pnl_sol ?? 0);
+  const currentValue = remaining * priceSol;
+  const pnlSol = realizedPnl + currentValue - costBasis;
+
+  pos.current_price = priceSol;
+  pos.current_price_usd = Number(priceData.priceUsd) || pos.current_price_usd || 0;
+  pos.current_value = currentValue;
+  pos.pnl_sol = pnlSol;
+  pos.pnl_percent = costBasis > 0 ? (pnlSol / costBasis) * 100 : currentValue > 0 ? 999 : 0;
+
+  const liquidityUsd = positiveNumber(priceData.liquidityUsd);
+  if (liquidityUsd != null) {
+    pos.liquidity_usd = liquidityUsd;
+  }
+}
+
 /**
  * Start the rug detection polling loop.
  * Checks all open positions' tokens for liquidity drops.
@@ -55,21 +93,25 @@ export function startRugDetector() {
 
           // Update all positions for this token with current price
           const tokenPositions = openPositions.filter((p) => p.token_address === tokenAddress);
+          const positionsToRug = tokenPositions.filter((pos) =>
+            shouldFlagRuggedPosition(pos, priceData.liquidityUsd, priceData.priceSol)
+          );
+
           for (const pos of tokenPositions) {
             if (isMockMode) {
-              // Mock mode: updatePositionPrice is a no-op, but we still update in-memory price below
+              updateMockPositionPrice(pos, priceData);
             } else {
-              await updatePositionPrice(pos._userId, pos.id, priceData.priceSol);
+              await updatePositionPrice(pos._userId, pos.id, priceData.priceSol, priceData.liquidityUsd);
             }
           }
 
           // Check if rugged (liquidity dropped below threshold)
           // IMPORTANT: Only flag if we got a VALID price response with real liquidity data
           // If liquidityUsd is 0 or undefined, the API likely failed — do NOT mark as rugged
-          if (priceData.liquidityUsd > 0 && priceData.liquidityUsd < RUG_LIQUIDITY_THRESHOLD_USD && priceData.priceSol > 0) {
+          if (positionsToRug.length > 0) {
             console.log(`🚨 RUG DETECTED: ${tokenAddress} (liquidity: $${priceData.liquidityUsd.toFixed(2)})`);
 
-            for (const pos of tokenPositions) {
+            for (const pos of positionsToRug) {
               const amount_sol = parseFloat(String(pos.amount_sol ?? '0'));
 
               if (isMockMode) {

@@ -20,7 +20,7 @@ app.set('trust proxy', 1);
 const port = parseInt(process.env.PORT ?? '3001', 10);
 
 // ─── Middleware ──────────────────────────────────────────
-const corsOrigins = (process.env.CORS_ORIGINS ?? [
+const defaultCorsOrigins = [
   'http://localhost:3000',
   'http://localhost:3002',
   'http://localhost:3003',
@@ -33,14 +33,30 @@ const corsOrigins = (process.env.CORS_ORIGINS ?? [
   'https://www.paperape.com',
   'https://paperape.fun',
   'https://www.paperape.fun',
-].join(','))
+];
+
+const configuredCorsOrigins = (process.env.CORS_ORIGINS ?? '')
   .split(',')
   .map((s) => s.trim())
   .filter(Boolean);
 
+const corsOrigins = new Set([...defaultCorsOrigins, ...configuredCorsOrigins]);
+
+function isAllowedLocalOrigin(origin: string) {
+  try {
+    const url = new URL(origin);
+    return (
+      (url.protocol === 'http:' || url.protocol === 'https:') &&
+      ['localhost', '127.0.0.1', '::1', '[::1]'].includes(url.hostname)
+    );
+  } catch {
+    return false;
+  }
+}
+
 app.use(cors({
   origin(origin, callback) {
-    if (!origin || corsOrigins.includes(origin)) {
+    if (!origin || corsOrigins.has(origin) || isAllowedLocalOrigin(origin)) {
       callback(null, true);
       return;
     }

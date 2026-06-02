@@ -110,6 +110,7 @@ export async function executeBuy(userId: string, req: BuyRequest): Promise<{
   assertTradablePrice(priceData, req.token_address);
 
   const marketPriceSol = priceData.priceSol;
+  const liquidityUsd = numericOrNull(priceData.liquidityUsd) ?? 0;
   const fees = calculateFees();
   const tokensReceived = calculateTokensReceived(req.amount_sol, marketPriceSol, EXECUTION_SLIPPAGE_PERCENT, fees);
 
@@ -152,6 +153,8 @@ export async function executeBuy(userId: string, req: BuyRequest): Promise<{
       position.current_price_usd = priceData.priceUsd;
       position.current_value = currentValue;
       position.market_cap_usd = marketCapUsd(tokenMeta) ?? position.market_cap_usd ?? 0;
+      position.entry_liquidity_usd = position.entry_liquidity_usd ?? position.liquidity_usd ?? liquidityUsd;
+      position.liquidity_usd = liquidityUsd || position.liquidity_usd || 0;
       position.realized_pnl_sol = realizedPnl;
       position.pnl_sol = pnl.pnlSol;
       position.pnl_percent = pnl.pnlPercent;
@@ -174,6 +177,8 @@ export async function executeBuy(userId: string, req: BuyRequest): Promise<{
         current_price_usd: priceData.priceUsd,
         current_value: currentValue,
         market_cap_usd: marketCapUsd(tokenMeta) ?? 0,
+        entry_liquidity_usd: liquidityUsd,
+        liquidity_usd: liquidityUsd,
         realized_pnl_sol: 0,
         pnl_sol: pnl.pnlSol,
         pnl_percent: pnl.pnlPercent,
@@ -258,6 +263,8 @@ export async function executeBuy(userId: string, req: BuyRequest): Promise<{
         current_price_usd: priceData.priceUsd,
         current_value: currentValue,
         market_cap_usd: marketCapUsd(tokenMeta) ?? data.market_cap_usd ?? 0,
+        entry_liquidity_usd: data.entry_liquidity_usd ?? data.liquidity_usd ?? liquidityUsd,
+        liquidity_usd: liquidityUsd || data.liquidity_usd || 0,
         realized_pnl_sol: realizedPnl,
         pnl_sol: pnl.pnlSol,
         pnl_percent: pnl.pnlPercent,
@@ -284,6 +291,8 @@ export async function executeBuy(userId: string, req: BuyRequest): Promise<{
         current_price_usd: priceData.priceUsd,
         current_value: currentValue,
         market_cap_usd: marketCapUsd(tokenMeta) ?? 0,
+        entry_liquidity_usd: liquidityUsd,
+        liquidity_usd: liquidityUsd,
         realized_pnl_sol: 0,
         pnl_sol: pnl.pnlSol,
         pnl_percent: pnl.pnlPercent,
@@ -674,7 +683,7 @@ export async function getUserPositions(userId: string, status?: string): Promise
 }
 
 // ─── Update Position Prices ─────────────────────────────
-export async function updatePositionPrice(userId: string, positionId: string, currentPriceSol: number) {
+export async function updatePositionPrice(userId: string, positionId: string, currentPriceSol: number, liquidityUsd?: number) {
   if (isMockMode) return;
 
   const docRef = userPositionsCol(userId).doc(positionId);
@@ -691,12 +700,19 @@ export async function updatePositionPrice(userId: string, positionId: string, cu
   // Moon bags (amount_sol=0) have infinite return — cap at 999%
   const pnlPercent = originalAmountSol > 0 ? (pnlSol / originalAmountSol) * 100 : (currentValue > 0 ? 999 : 0);
 
-  await docRef.update({
+  const updateData: Record<string, number> = {
     current_price: currentPriceSol,
     current_value: currentValue,
     pnl_sol: pnlSol,
     pnl_percent: pnlPercent,
-  });
+  };
+
+  const liquidityValue = Number(liquidityUsd);
+  if (Number.isFinite(liquidityValue) && liquidityValue > 0) {
+    updateData.liquidity_usd = liquidityValue;
+  }
+
+  await docRef.update(updateData);
 }
 
 export async function resetUserOpenPositions(userId: string): Promise<number> {
