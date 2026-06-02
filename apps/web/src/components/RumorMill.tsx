@@ -119,9 +119,9 @@ export default function RumorMill({ onRumorEvent }: RumorMillProps) {
   const typeIcon = (t: Rumor['type']) => {
     switch (t) {
       case 'whale': return '🐋';
-      case 'alpha': return '📊';
+      case 'alpha': return '[Alpha]';
       case 'rug': return '🚩';
-      case 'dev': return '⚠️';
+      case 'dev': return '[Alert]';
       case 'kol': return '💬';
     }
   };

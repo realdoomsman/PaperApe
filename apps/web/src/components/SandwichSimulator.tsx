@@ -49,7 +49,7 @@ export default function SandwichSimulator({ onComplete }: { onComplete?: () => v
           action: 'BUY',
           amount: `${botFrontRunSize.toFixed(2)} SOL`,
           price: `${priceAfterFrontRun.toExponential(4)}`,
-          label: '🤖 MEV Bot Front-Run',
+          label: 'MEV Bot Front-Run',
           color: 'var(--red)',
         },
       ]);
@@ -72,7 +72,7 @@ export default function SandwichSimulator({ onComplete }: { onComplete?: () => v
             action: 'SELL',
             amount: `${botFrontRunSize.toFixed(2)} SOL`,
             price: `${botSellPrice.toExponential(4)}`,
-            label: '🤖 MEV Bot Back-Run',
+            label: 'MEV Bot Back-Run',
             color: 'var(--red)',
           }]);
 
@@ -113,7 +113,7 @@ export default function SandwichSimulator({ onComplete }: { onComplete?: () => v
             </div>
             {slippage >= 20 && (
               <div style={{ marginTop: 6, fontSize: 10, color: 'var(--red)', fontWeight: 600 }}>
-                ⚠️ High slippage makes you a prime target for sandwich attacks
+                High slippage makes you a prime target for sandwich attacks
               </div>
             )}
           </div>
@@ -185,7 +185,7 @@ export default function SandwichSimulator({ onComplete }: { onComplete?: () => v
         <div style={{ margin: '0 18px 18px' }}>
           {/* Loss breakdown */}
           <div style={{ padding: '14px 16px', background: 'var(--red-bg)', border: '1px solid rgba(255,59,92,0.15)', borderRadius: 10, marginBottom: 12 }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--red)', marginBottom: 8 }}>💸 MEV Extraction Summary</div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--red)', marginBottom: 8 }}>MEV Extraction Summary</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
               <div>
                 <div style={{ fontSize: 10, color: 'var(--t3)', fontWeight: 600 }}>YOU PAID EXTRA</div>
@@ -200,7 +200,7 @@ export default function SandwichSimulator({ onComplete }: { onComplete?: () => v
 
           {/* Educational debrief */}
           <div style={{ padding: '14px 16px', background: 'rgba(45,107,63,0.08)', border: '1px solid rgba(45,107,63,0.15)', borderRadius: 10 }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--green)', marginBottom: 8 }}>🧠 What You Learned</div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--green)', marginBottom: 8 }}>What You Learned</div>
             <div style={{ fontSize: 12, color: 'var(--t1)', lineHeight: 1.7 }}>
               <strong>MEV bots</strong> monitor the mempool for large pending trades with high slippage tolerance.
               They insert a buy order <em>before</em> yours (front-run) and a sell order <em>after</em> (back-run), pocketing the price difference.
@@ -211,7 +211,7 @@ export default function SandwichSimulator({ onComplete }: { onComplete?: () => v
             </div>
             {onComplete && (
               <button onClick={onComplete} className="btn primary haptic" style={{ marginTop: 12, fontSize: 12, padding: '8px 18px' }}>
-                ✅ Complete Lesson — Claim Reward
+                Complete Lesson — Claim Reward
               </button>
             )}
           </div>

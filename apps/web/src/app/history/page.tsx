@@ -119,7 +119,12 @@ export default function HistoryPage() {
                 const curve = [0];
                 const sorted = [...trades].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
                 let running = 0;
-                for (const t of sorted) { running += parseFloat(String(t.pnl_sol ?? t.pnl ?? 0)); curve.push(running); }
+                for (const t of sorted) {
+                  if (t.trade_type === 'sell' || t.trade_type === 'sell_init') {
+                    running += parseFloat(String(t.realized_pnl_sol ?? 0));
+                  }
+                  curve.push(running);
+                }
                 if (curve.length < 2) curve.push(totalPnl);
                 return curve;
               })()}
@@ -205,11 +210,11 @@ export default function HistoryPage() {
                     <div style={{ display: 'flex', gap: 4 }}>
                       {pnl > 0 && (
                         <button onClick={(e) => { e.stopPropagation(); setSharePos(pos); }} className="btn haptic" style={{ padding: '3px 8px', fontSize: 9, fontWeight: 700, color: 'var(--accent-l)' }}>
-                          FLEX 📸
+                          FLEX
                         </button>
                       )}
                       <button onClick={(e) => { e.stopPropagation(); setEditingNote(editingNote === pos.id ? null : pos.id); }} className="haptic" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '3px 6px', fontSize: 11, color: notes[pos.id] ? 'var(--accent-l)' : 'var(--t3)', opacity: notes[pos.id] ? 1 : 0.5 }} title="Trade notes">
-                        📝
+                        N
                       </button>
                     </div>
                   </div>

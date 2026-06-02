@@ -136,52 +136,94 @@ export default function DashboardPage() {
   }, [authToken]);
 
   const displayBalance = balance ?? 100;
-  const totalPnl = positions.reduce((s: number, p: any) => s + parseFloat(String(p.pnl_sol ?? p.pnl ?? 0)), 0);
+  const positionValue = positions.reduce((s: number, p: any) => s + parseFloat(String(p.current_value ?? p.amount_sol ?? 0)), 0);
+  const totalPortfolioValue = displayBalance + positionValue;
+
+  // Only sell/sell_init trades have meaningful PnL
   const sellTrades = trades.filter((t: any) => t.trade_type === 'sell' || t.trade_type === 'sell_init');
+
+  // Total PnL: sum realized PnL from sell trades + unrealized from open positions
+  const realizedPnl = sellTrades.reduce((s: number, t: any) => s + parseFloat(String(t.realized_pnl_sol ?? 0)), 0);
+  const unrealizedPnl = positions.reduce((s: number, p: any) => {
+    const currentValue = parseFloat(String(p.current_value ?? 0));
+    const invested = parseFloat(String(p.amount_sol ?? 0));
+    return s + (currentValue - invested);
+  }, 0);
+  const totalPnl = realizedPnl + unrealizedPnl;
+
+  // Win rate: only from sell trades
   const winRate = sellTrades.length > 0 ? Math.round((sellTrades.filter((t: any) => parseFloat(String(t.realized_pnl_sol ?? 0)) > 0).length / sellTrades.length) * 100) : 0;
   const isAuthed = !!authToken;
   const displayName = user?.displayName || user?.email?.split('@')[0] || 'explorer';
 
-  // Calculate trading streak
+  // Calculate trading streak from SELL trades only (buys don't have PnL)
   const streak = (() => {
+    if (sellTrades.length === 0) return 0;
     let count = 0;
-    const sorted = [...trades].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    const sorted = [...sellTrades].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
     for (const t of sorted) {
-      const pnl = parseFloat(String(t.pnl_sol ?? t.pnl ?? 0));
+      const pnl = parseFloat(String(t.realized_pnl_sol ?? 0));
       if (count === 0) {
-        count = pnl >= 0 ? 1 : -1;
-      } else if ((count > 0 && pnl >= 0) || (count < 0 && pnl < 0)) {
+        count = pnl > 0 ? 1 : -1;
+      } else if ((count > 0 && pnl > 0) || (count < 0 && pnl <= 0)) {
         count += count > 0 ? 1 : -1;
       } else break;
     }
     return count;
   })();
 
-  // Build equity curve from trade history
+  // Build equity curve: track balance changes from all trades
   const equityCurve = (() => {
     const curve = [100]; // starting balance
     const sorted = [...trades].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
     let running = 100;
     for (const t of sorted) {
-      const pnl = parseFloat(String(t.pnl_sol ?? t.pnl ?? 0));
-      running += pnl;
-      curve.push(running);
+      if (t.trade_type === 'buy') {
+        // Buy: spent SOL
+        running -= parseFloat(String(t.amount_sol ?? 0));
+      } else {
+        // Sell/sell_init: received SOL
+        running += parseFloat(String(t.amount_sol ?? 0));
+      }
+      curve.push(Math.max(0, running));
     }
-    if (curve.length === 1) curve.push(displayBalance); // at least 2 points
+    if (curve.length === 1) curve.push(displayBalance);
     return curve;
   })();
 
-  // Best/worst trade
-  const bestTrade = trades.length > 0 ? Math.max(...trades.map((t: any) => parseFloat(String(t.pnl_sol ?? t.pnl ?? 0)))) : 0;
-  const worstTrade = trades.length > 0 ? Math.min(...trades.map((t: any) => parseFloat(String(t.pnl_sol ?? t.pnl ?? 0)))) : 0;
-  const avgHoldTime = trades.length > 0 ? 'N/A' : '-';
+  // Best/worst trade: only from sell trades
+  const bestTrade = sellTrades.length > 0 ? Math.max(...sellTrades.map((t: any) => parseFloat(String(t.realized_pnl_sol ?? 0)))) : 0;
+  const worstTrade = sellTrades.length > 0 ? Math.min(...sellTrades.map((t: any) => parseFloat(String(t.realized_pnl_sol ?? 0)))) : 0;
+
+  // Avg hold time: calculate from buy→sell pairs
+  const avgHoldTime = (() => {
+    if (sellTrades.length === 0) return '-';
+    const buyTrades = trades.filter((t: any) => t.trade_type === 'buy');
+    const holdTimes: number[] = [];
+    for (const sell of sellTrades) {
+      const matchingBuy = buyTrades.find((b: any) => b.position_id === sell.position_id);
+      if (matchingBuy) {
+        const buyTime = new Date(matchingBuy.created_at).getTime();
+        const sellTime = new Date(sell.created_at).getTime();
+        const diffMs = sellTime - buyTime;
+        if (diffMs > 0) holdTimes.push(diffMs);
+      }
+    }
+    if (holdTimes.length === 0) return 'N/A';
+    const avgMs = holdTimes.reduce((s, t) => s + t, 0) / holdTimes.length;
+    const avgMin = avgMs / 60000;
+    if (avgMin < 60) return `${Math.round(avgMin)}m`;
+    const avgHr = avgMin / 60;
+    if (avgHr < 24) return `${avgHr.toFixed(1)}h`;
+    return `${(avgHr / 24).toFixed(1)}d`;
+  })();
 
   const allLessons = getAllLessons();
   const academyPct = allLessons.length > 0 ? Math.round((completedLessons.size / allLessons.length) * 100) : 0;
   const nextLesson = allLessons.find(l => !completedLessons.has(l.id));
 
   return (
-    <AppShell balance={displayBalance}>
+    <AppShell balance={totalPortfolioValue}>
       {showFlex && (
         <ShareCard
           tokenSymbol="PORTFOLIO"
@@ -230,8 +272,8 @@ export default function DashboardPage() {
       <div className="stats-row an an1">
         <div className="stat-card" style={{ borderColor: 'rgba(0,255,136,0.08)' }}>
           <div className="stat-label">Portfolio Value</div>
-          <div className="stat-val mono">{dataLoading && balance === null ? <span className="skeleton" style={{ display: 'inline-block', width: 80, height: 20, borderRadius: 4 }} /> : <>{displayBalance.toFixed(mode === 'pro' ? 4 : 2)} <span style={{ fontSize: 12, color: 'var(--t3)' }}>SOL</span></>}</div>
-          <div className="stat-sub">{isAuthed ? 'Starting: 100.00 SOL' : 'Sample balance'}</div>
+          <div className="stat-val mono">{dataLoading && balance === null ? <span className="skeleton" style={{ display: 'inline-block', width: 80, height: 20, borderRadius: 4 }} /> : <>{totalPortfolioValue.toFixed(mode === 'pro' ? 4 : 2)} <span style={{ fontSize: 12, color: 'var(--t3)' }}>SOL</span></>}</div>
+          <div className="stat-sub">{isAuthed ? `Cash: ${displayBalance.toFixed(2)} SOL` : 'Sample balance'}</div>
         </div>
         <div className="stat-card">
           <div className="stat-label">Total PnL</div>
@@ -257,15 +299,15 @@ export default function DashboardPage() {
         <div className="card" style={{ overflow: 'hidden' }}>
           <div className="card-head">
             <span className="card-title">Portfolio Equity</span>
-            <span className={`mono ${displayBalance >= 100 ? 'up' : 'down'}`} style={{ fontSize: 12, fontWeight: 700 }}>
-              {displayBalance >= 100 ? '+' : ''}{((displayBalance - 100) / 100 * 100).toFixed(1)}%
+            <span className={`mono ${totalPortfolioValue >= 100 ? 'up' : 'down'}`} style={{ fontSize: 12, fontWeight: 700 }}>
+              {totalPortfolioValue >= 100 ? '+' : ''}{((totalPortfolioValue - 100) / 100 * 100).toFixed(1)}%
             </span>
           </div>
           <div style={{ padding: '8px 14px 14px' }}>
-            <Sparkline data={equityCurve} width={500} height={70} color={displayBalance >= 100 ? 'var(--green)' : 'var(--red)'} />
+            <Sparkline data={equityCurve} width={500} height={70} color={totalPortfolioValue >= 100 ? 'var(--green)' : 'var(--red)'} />
             <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8, fontSize: 9, color: 'var(--t3)' }}>
               <span>Start: 100 SOL</span>
-              <span className="mono" style={{ fontWeight: 600, color: displayBalance >= 100 ? 'var(--green)' : 'var(--red)' }}>Now: {displayBalance.toFixed(2)} SOL</span>
+              <span className="mono" style={{ fontWeight: 600, color: totalPortfolioValue >= 100 ? 'var(--green)' : 'var(--red)' }}>Now: {totalPortfolioValue.toFixed(2)} SOL</span>
             </div>
           </div>
         </div>
