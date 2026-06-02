@@ -27,18 +27,21 @@ export function startRugDetector() {
           }
         }
       } else {
-        // Production: query all positions across all users via collectionGroup
-        const snapshot = await db.collectionGroup('positions')
-          .where('status', '==', 'open')
-          .where('is_rugged', '==', false)
-          .get();
-        if (snapshot.empty) return;
-        openPositions = snapshot.docs.map(doc => ({
-          id: doc.id,
-          _ref: doc.ref,
-          _userId: doc.ref.parent.parent!.id,
-          ...doc.data() as any,
-        }));
+        // Production: query each user's positions subcollection
+        const usersSnap = await db.collection('users').get();
+        for (const userDoc of usersSnap.docs) {
+          const posSnap = await db.collection('users').doc(userDoc.id).collection('positions')
+            .where('status', '==', 'open')
+            .get();
+          for (const doc of posSnap.docs) {
+            openPositions.push({
+              id: doc.id,
+              _ref: doc.ref,
+              _userId: userDoc.id,
+              ...doc.data() as any,
+            });
+          }
+        }
       }
 
       if (openPositions.length === 0) return;

@@ -150,35 +150,34 @@ app.post('/debug/unrug-all', async (_req, res) => {
     const { db, isMockMode } = await import('./lib/firebase.js');
     if (isMockMode) return res.json({ fixed: 0, mode: 'mock' });
     
-    const snapshot = await db.collectionGroup('positions')
-      .where('status', '==', 'rugged')
-      .get();
-    
-    if (snapshot.empty) return res.json({ fixed: 0 });
-    
-    let fixed = 0;
-    const batch = db.batch();
-    
-    for (const doc of snapshot.docs) {
-      const data = doc.data();
-      const amountSol = parseFloat(String(data.amount_sol ?? 0));
-      batch.update(doc.ref, {
-        status: 'open',
-        is_rugged: false,
-        pnl_percent: 0,
-        pnl_sol: 0,
-        current_value: amountSol,
-        current_price: data.entry_price || 0,
-        closed_at: null,
-      });
-      fixed++;
-    }
-    
-    await batch.commit();
-    
-    // Restore user balance: sum up all position amounts and add back to 100
     const usersSnap = await db.collection('users').get();
+    let fixed = 0;
+    
     for (const userDoc of usersSnap.docs) {
+      const posSnap = await db.collection('users').doc(userDoc.id).collection('positions')
+        .where('status', '==', 'rugged')
+        .get();
+      
+      if (posSnap.empty) continue;
+      
+      const batch = db.batch();
+      for (const doc of posSnap.docs) {
+        const data = doc.data();
+        const amountSol = parseFloat(String(data.amount_sol ?? 0));
+        batch.update(doc.ref, {
+          status: 'open',
+          is_rugged: false,
+          pnl_percent: 0,
+          pnl_sol: 0,
+          current_value: amountSol,
+          current_price: data.entry_price || 0,
+          closed_at: null,
+        });
+        fixed++;
+      }
+      await batch.commit();
+      
+      // Reset balance to 100 SOL
       await userDoc.ref.update({ paper_balance: 100 });
     }
     
