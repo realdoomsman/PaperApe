@@ -144,6 +144,50 @@ app.get('/debug/data', async (_req, res) => {
   }
 });
 
+// ─── Fix: Unrug all falsely-rugged positions ────────────
+app.post('/debug/unrug-all', async (_req, res) => {
+  try {
+    const { db, isMockMode } = await import('./lib/firebase.js');
+    if (isMockMode) return res.json({ fixed: 0, mode: 'mock' });
+    
+    const snapshot = await db.collectionGroup('positions')
+      .where('status', '==', 'rugged')
+      .get();
+    
+    if (snapshot.empty) return res.json({ fixed: 0 });
+    
+    let fixed = 0;
+    const batch = db.batch();
+    
+    for (const doc of snapshot.docs) {
+      const data = doc.data();
+      const amountSol = parseFloat(String(data.amount_sol ?? 0));
+      batch.update(doc.ref, {
+        status: 'open',
+        is_rugged: false,
+        pnl_percent: 0,
+        pnl_sol: 0,
+        current_value: amountSol,
+        current_price: data.entry_price || 0,
+        closed_at: null,
+      });
+      fixed++;
+    }
+    
+    await batch.commit();
+    
+    // Restore user balance: sum up all position amounts and add back to 100
+    const usersSnap = await db.collection('users').get();
+    for (const userDoc of usersSnap.docs) {
+      await userDoc.ref.update({ paper_balance: 100 });
+    }
+    
+    res.json({ fixed, balanceReset: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ─── Routes ─────────────────────────────────────────────
 app.use('/auth', authRouter);
 app.use('/trades', tradesRouter);

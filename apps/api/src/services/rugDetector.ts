@@ -61,7 +61,9 @@ export function startRugDetector() {
           }
 
           // Check if rugged (liquidity dropped below threshold)
-          if (priceData.liquidityUsd < RUG_LIQUIDITY_THRESHOLD_USD) {
+          // IMPORTANT: Only flag if we got a VALID price response with real liquidity data
+          // If liquidityUsd is 0 or undefined, the API likely failed — do NOT mark as rugged
+          if (priceData.liquidityUsd > 0 && priceData.liquidityUsd < RUG_LIQUIDITY_THRESHOLD_USD && priceData.priceSol > 0) {
             console.log(`🚨 RUG DETECTED: ${tokenAddress} (liquidity: $${priceData.liquidityUsd.toFixed(2)})`);
 
             for (const pos of tokenPositions) {
