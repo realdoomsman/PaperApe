@@ -84,16 +84,11 @@ app.get('/', (_req, res) => {
 // ─── Health Check ───────────────────────────────────────
 app.get('/health', (_req, res) => {
   const priceStream = getPriceStreamStats();
-  // Simulated network congestion: cycles through levels every few minutes
-  const minute = Math.floor(Date.now() / 60_000);
-  const congestionCycle = minute % 10;
-  const congestion = congestionCycle < 6 ? 'low' : congestionCycle < 8 ? 'medium' : 'high';
   res.json({
     status: 'ok',
     service: 'paperape-api',
     timestamp: Date.now(),
     priceStream,
-    network: { congestion, priority_fee: congestion === 'low' ? 0.005 : congestion === 'medium' ? 0.01 : 0.05 },
   });
 });
 

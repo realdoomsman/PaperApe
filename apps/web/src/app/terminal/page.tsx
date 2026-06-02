@@ -499,7 +499,8 @@ function TerminalInner() {
         const entryPriceUsd = parseFloat(apiPos.entry_price_usd) || Number(apiTrade?.price_usd) || displayPrice;
         const currentPriceUsd = parseFloat(apiPos.current_price_usd) || Number(apiTrade?.price_usd) || displayPrice;
         const currentVal = tokensHeld * currentPriceSol;
-        const pnlVal = currentVal - investedSol;
+        const realizedPnl = parseFloat(String(apiPos.realized_pnl_sol ?? 0));
+        const pnlVal = realizedPnl + currentVal - investedSol;
         const pnlPct = investedSol > 0 ? (pnlVal / investedSol) * 100 : 0;
         const newPos: Position = {
           id: apiPos.id,
@@ -529,7 +530,7 @@ function TerminalInner() {
         showToast(`Bought ${(apiTrade.amount_tokens || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })} ${displaySymbol}`, 'buy');
         window.dispatchEvent(new CustomEvent('pa:notification', { detail: { title: `Bought ${displaySymbol}`, message: `${(apiTrade.amount_tokens || 0).toLocaleString()} tokens for ${amount} SOL`, type: 'trade' } }));
       } else {
-        const pos = positions.find(p => p.symbol === displaySymbol || p.tokenAddress === effectiveAddress);
+        const pos = positions.find(p => p.tokenAddress === effectiveAddress) || positions.find(p => p.symbol === displaySymbol);
         if (!pos) { showToast('No position to sell', 'error'); setLoading(false); return; }
         const res = await apiRequest('POST', '/trades/sell', {
           position_id: pos.id, percentage: sellPercent,
@@ -546,6 +547,9 @@ function TerminalInner() {
             ...p, tokens: apiPos.tokens_remaining, amount: apiPos.amount_sol,
             currentPrice: apiPos.current_price, currentPriceUsd: apiPos.current_price_usd || apiTrade?.price_usd || displayPrice,
             pnl: apiPos.pnl_sol || 0, pnlPercent: apiPos.pnl_percent || 0,
+            realizedPnl: parseFloat(String(apiPos.realized_pnl_sol ?? 0)),
+            currentValue: parseFloat(String(apiPos.current_value ?? 0)),
+            isMoonBag: apiPos.is_moon_bag || p.isMoonBag,
           } : p));
         }
 
@@ -570,7 +574,7 @@ function TerminalInner() {
       apiRequest('GET', '/auth/me', undefined, authToken || undefined).then(r => {
         if (r.success && r.data?.user) setBalance(parseFloat(r.data.user.paper_balance ?? 0));
       });
-      setPositions(prev => prev.map(p => p.id === posId ? { ...p, tokens: moon_bag_tokens, isMoonBag: true, amount: 0, currentPrice: apiPos.current_price, currentPriceUsd: apiPos.current_price_usd || apiTrade?.price_usd || displayPrice } : p));
+      setPositions(prev => prev.map(p => p.id === posId ? { ...p, tokens: moon_bag_tokens, isMoonBag: true, amount: 0, currentPrice: apiPos.current_price, currentPriceUsd: apiPos.current_price_usd || apiTrade?.price_usd || displayPrice, pnl: parseFloat(String(apiPos.pnl_sol ?? 0)), pnlPercent: parseFloat(String(apiPos.pnl_percent ?? 0)), realizedPnl: parseFloat(String(apiPos.realized_pnl_sol ?? 0)), currentValue: parseFloat(String(apiPos.current_value ?? 0)) } : p));
 
       showToast(`Init recovered: ${(sol_received || 0).toFixed(4)} SOL`, 'buy');
     } catch (err: any) { showToast(err.message || 'Sell Init failed', 'error'); }
@@ -657,7 +661,7 @@ function TerminalInner() {
       {showConfirm && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', animation: 'fadeInUp 0.15s ease' }}>
           <div style={{ background: 'var(--bg-1)', border: '2px solid var(--border-1)', borderRadius: 16, padding: '28px 32px', maxWidth: 380, width: '90%', boxShadow: '0 20px 60px rgba(0,0,0,0.4)' }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--gold)', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 16 }}>⚠ Confirm Trade</div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--gold)', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 16 }}>Confirm Trade</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 18 }}>
               <div style={{ padding: '10px 12px', background: 'var(--bg-2)', borderRadius: 8 }}>
                 <div style={{ fontSize: 9, color: 'var(--t3)', textTransform: 'uppercase', letterSpacing: 0.5 }}>Type</div>

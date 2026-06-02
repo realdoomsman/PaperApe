@@ -220,35 +220,36 @@ walletsRouter.post('/transfer', async (req: any, res) => {
       return res.json({ success: true, data: { from, to, amount_transferred: amount } });
     }
 
-    // Firestore — atomic transfer using batch write
+    // Firestore — atomic transfer using transaction
     const fromRef = db.collection('users').doc(userId).collection('wallets').doc(fromId);
     const toRef = db.collection('users').doc(userId).collection('wallets').doc(toId);
 
-    const [fromSnap, toSnap] = await Promise.all([fromRef.get(), toRef.get()]);
-    if (!fromSnap.exists || !toSnap.exists) {
-      return res.status(404).json({ success: false, error: 'Wallet not found' });
-    }
+    const result = await db.runTransaction(async (txn) => {
+      const [fromSnap, toSnap] = await Promise.all([txn.get(fromRef), txn.get(toRef)]);
+      if (!fromSnap.exists || !toSnap.exists) {
+        throw new Error('Wallet not found');
+      }
 
-    const fromData = fromSnap.data()!;
-    const toData = toSnap.data()!;
+      const fromData = fromSnap.data()!;
+      const toData = toSnap.data()!;
+      const fromBalance = fromData.balance ?? 0;
+      const toBalance = toData.balance ?? 0;
 
-    if ((fromData.balance ?? 0) < amount) {
-      return res.status(400).json({ success: false, error: `Insufficient balance. Have ${fromData.balance?.toFixed(4)} SOL.` });
-    }
+      if (fromBalance < amount) {
+        throw new Error(`Insufficient balance. Have ${fromBalance.toFixed(4)} SOL.`);
+      }
 
-    const batch = db.batch();
-    batch.update(fromRef, { balance: (fromData.balance ?? 0) - amount });
-    batch.update(toRef, { balance: (toData.balance ?? 0) + amount });
-    await batch.commit();
+      txn.update(fromRef, { balance: fromBalance - amount });
+      txn.update(toRef, { balance: toBalance + amount });
 
-    res.json({
-      success: true,
-      data: {
-        from: { id: fromId, ...fromData, balance: (fromData.balance ?? 0) - amount },
-        to: { id: toId, ...toData, balance: (toData.balance ?? 0) + amount },
+      return {
+        from: { id: fromId, ...fromData, balance: fromBalance - amount },
+        to: { id: toId, ...toData, balance: toBalance + amount },
         amount_transferred: amount,
-      },
+      };
     });
+
+    res.json({ success: true, data: result });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
   }

@@ -152,7 +152,7 @@ export default function SettingsPage() {
         {/* Danger Zone */}
         <div className="card" style={{ borderColor: 'rgba(255,77,77,0.1)' }}>
           <div className="card-head">
-            <span className="card-title" style={{ color: 'var(--red)' }}>⚠ Danger Zone</span>
+            <span className="card-title" style={{ color: 'var(--red)' }}>Danger Zone</span>
           </div>
           <div className="card-pad">
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>

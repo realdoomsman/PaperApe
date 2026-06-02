@@ -32,37 +32,22 @@ function getCongestionLevel(): 'low' | 'medium' | 'high' {
   return cycle < 6 ? 'low' : cycle < 8 ? 'medium' : 'high';
 }
 
-function getPriorityFee(level: 'low' | 'medium' | 'high', userPriority?: string): number {
-  const fees: Record<string, Record<string, number>> = {
-    low:    { normal: 0.0005, turbo: 0.001, yolo: 0.005 },
-    medium: { normal: 0.002,  turbo: 0.005, yolo: 0.01  },
-    high:   { normal: 0.005,  turbo: 0.01,  yolo: 0.05  },
-  };
-  return fees[level][userPriority ?? 'normal'] ?? 0.0005;
-}
-
-async function simulateCongestion(priority?: string): Promise<{ congestion: string; priorityFee: number; delayMs: number }> {
+async function simulateCongestion(): Promise<{ congestion: string; priorityFee: number; delayMs: number }> {
   const congestion = getCongestionLevel();
-  const priorityFee = getPriorityFee(congestion, priority);
-
-  // Random failure chance based on congestion (skip for YOLO priority)
-  if (priority !== 'yolo') {
-    const failChance = congestion === 'high' ? 0.15 : congestion === 'medium' ? 0.05 : 0;
-    if (Math.random() < failChance) {
-      throw new Error(`Transaction failed: Network congestion is ${congestion}. Try increasing priority fee.`);
-    }
-  }
-
-  // Simulated confirmation delay
-  const delayMs = congestion === 'high' ? 2000 : congestion === 'medium' ? 1200 : 500;
+  const delayMs = congestion === 'high' ? 1500 : congestion === 'medium' ? 800 : 400;
   await new Promise(resolve => setTimeout(resolve, delayMs));
-
-  return { congestion, priorityFee, delayMs };
+  return { congestion, priorityFee: 0, delayMs };
 }
 
-function assertTradablePrice(priceData: any, tokenAddress: string) {
+function assertTradablePrice(priceData: any, tokenAddress: string, allowZero = false) {
   const priceSol = Number(priceData?.priceSol);
   const priceUsd = Number(priceData?.priceUsd);
+  if (allowZero) {
+    if (!Number.isFinite(priceSol) || priceSol < 0 || !Number.isFinite(priceUsd) || priceUsd < 0) {
+      throw new Error(`No valid price data for token ${tokenAddress}`);
+    }
+    return;
+  }
   if (!Number.isFinite(priceSol) || priceSol <= 0 || !Number.isFinite(priceUsd) || priceUsd <= 0) {
     throw new Error(`No valid price data for token ${tokenAddress}`);
   }
@@ -116,7 +101,7 @@ export async function executeBuy(userId: string, req: BuyRequest): Promise<{
   congestion?: string;
 }> {
   // Simulate network conditions
-  const txSim = await simulateCongestion((req as any).priority);
+  const txSim = await simulateCongestion();
 
   const [priceData, tokenMeta] = await Promise.all([
     getTokenPrice(req.token_address),
@@ -129,7 +114,7 @@ export async function executeBuy(userId: string, req: BuyRequest): Promise<{
   const tradeAmountUsd = req.amount_sol * (priceData.priceUsd / priceData.priceSol);
   const slippage = calculateSlippage(tradeAmountUsd, liquidityUsd);
   const effectiveSlippage = slippage;
-  const fees = calculateFees(txSim.priorityFee);
+  const fees = calculateFees();
   const tokensReceived = calculateTokensReceived(req.amount_sol, marketPriceSol, effectiveSlippage, fees);
 
   if (tokensReceived <= 0) throw new Error('Trade too small after fees and slippage');
@@ -357,13 +342,12 @@ export async function executeSell(userId: string, req: SellRequest): Promise<{
     const userPositions = mockPositions.get(userId) ?? [];
     const position = userPositions.find(p => p.id === req.position_id && p.status === 'open');
     if (!position) throw new Error('Position not found or already closed');
-    if (position.is_rugged) throw new Error('Cannot sell rugged token');
 
     const [priceData, tokenMeta] = await Promise.all([
       getTokenPrice(position.token_address),
       getTokenOverview(position.token_address),
     ]);
-    assertTradablePrice(priceData, position.token_address);
+    assertTradablePrice(priceData, position.token_address, true);
     const tokensToSell = position.tokens_remaining * (req.percentage / 100);
     if (tokensToSell <= 0) throw new Error('No tokens available to sell');
     const tradeAmountUsd = tokensToSell * priceData.priceUsd;
@@ -418,13 +402,12 @@ export async function executeSell(userId: string, req: SellRequest): Promise<{
   const positionPreSnap = await positionDocRef.get();
   if (!positionPreSnap.exists) throw new Error('Position not found');
   const preData = positionPreSnap.data()!;
-  if (preData.is_rugged) throw new Error('Cannot sell rugged token');
 
   const [priceData, tokenMeta] = await Promise.all([
     getTokenPrice(preData.token_address),
     getTokenOverview(preData.token_address),
   ]);
-  assertTradablePrice(priceData, preData.token_address);
+  assertTradablePrice(priceData, preData.token_address, true);
   const marketPriceSol = priceData.priceSol;
 
   const result = await db.runTransaction(async (txn) => {
@@ -523,7 +506,7 @@ export async function executeSellInit(userId: string, req: SellInitRequest): Pro
       getTokenPrice(position.token_address),
       getTokenOverview(position.token_address),
     ]);
-    assertTradablePrice(priceData, position.token_address);
+    assertTradablePrice(priceData, position.token_address, true);
     const tradeAmountUsd = position.amount_sol * (priceData.priceUsd / priceData.priceSol);
     const slippage = calculateSlippage(tradeAmountUsd, priceData.liquidityUsd);
     const fees = calculateFees();
@@ -571,13 +554,13 @@ export async function executeSellInit(userId: string, req: SellInitRequest): Pro
   const posPreSnap = await positionDocRef.get();
   if (!posPreSnap.exists) throw new Error('Position not found');
   const preData = posPreSnap.data()!;
-  if (preData.is_rugged) throw new Error('Cannot sell rugged token');
+
 
   const [priceData, tokenMeta] = await Promise.all([
     getTokenPrice(preData.token_address),
     getTokenOverview(preData.token_address),
   ]);
-  assertTradablePrice(priceData, preData.token_address);
+  assertTradablePrice(priceData, preData.token_address, true);
   const marketPriceSol = priceData.priceSol;
 
   const result = await db.runTransaction(async (txn) => {
@@ -664,15 +647,42 @@ export async function getUserPositions(userId: string, status?: string): Promise
     return positions;
   }
 
-  let q: FirebaseFirestore.Query = userPositionsCol(userId)
-    .orderBy('created_at', 'desc');
+  try {
+    let q: FirebaseFirestore.Query = userPositionsCol(userId);
 
-  if (status) {
-    q = q.where('status', '==', status);
+    if (status) {
+      q = q.where('status', '==', status);
+    }
+
+    const snapshot = await q.get();
+    const positions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+    // Sort in memory to avoid needing a composite index
+    positions.sort((a: any, b: any) => {
+      const aTime = new Date(a.created_at || 0).getTime();
+      const bTime = new Date(b.created_at || 0).getTime();
+      return bTime - aTime;
+    });
+
+    return positions;
+  } catch (err: any) {
+    console.error('[tradeEngine] getUserPositions error:', err.message);
+    // Fallback: try without any filter
+    try {
+      const snapshot = await userPositionsCol(userId).get();
+      const all = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const filtered = status ? all.filter((p: any) => p.status === status) : all;
+      filtered.sort((a: any, b: any) => {
+        const aTime = new Date(a.created_at || 0).getTime();
+        const bTime = new Date(b.created_at || 0).getTime();
+        return bTime - aTime;
+      });
+      return filtered;
+    } catch (fallbackErr: any) {
+      console.error('[tradeEngine] getUserPositions fallback error:', fallbackErr.message);
+      return [];
+    }
   }
-
-  const snapshot = await q.get();
-  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 }
 
 // ─── Update Position Prices ─────────────────────────────

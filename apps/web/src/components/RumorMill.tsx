@@ -16,32 +16,32 @@ const AVATAR_COLORS = ['#2d6b3f', '#6b2d3f', '#2d3f6b', '#6b5a2d', '#4a2d6b', '#
 
 // ─── Rumor Templates ────────────────────────────────────
 const BULLISH_TEMPLATES = [
-  { text: '🚨 WHALE ALERT: {amt} SOL just rotated into ${token}', type: 'whale' as const },
-  { text: '👀 Smart money wallet ending in ...{addr} just loaded ${token}. This wallet was early on $WIF', type: 'whale' as const },
-  { text: '🔥 ${token} breaking out of accumulation zone. Volume 3x in last hour', type: 'alpha' as const },
-  { text: '📊 ${token} just hit new ATH. Dev wallet hasn\'t sold a single token', type: 'alpha' as const },
-  { text: '💎 Huge buy wall forming on ${token}. Someone knows something', type: 'whale' as const },
-  { text: '🎯 Insider alpha: ${token} partnership announcement dropping tomorrow', type: 'kol' as const },
-  { text: '🦍 ${token} community just hit 50K holders. Organic growth only', type: 'alpha' as const },
-  { text: '🚀 Tier 1 CEX listing rumor for ${token}. Load your bags', type: 'kol' as const },
-  { text: '📈 ${token} bonding curve about to complete. Migration to Raydium imminent', type: 'alpha' as const },
-  { text: '🐋 Solana Foundation wallet just bought {amt} SOL worth of ${token}', type: 'whale' as const },
+  { text: 'WHALE ALERT: {amt} SOL just rotated into ${token}', type: 'whale' as const },
+  { text: 'Smart money wallet ending in ...{addr} just loaded ${token}. This wallet was early on $WIF', type: 'whale' as const },
+  { text: '${token} breaking out of accumulation zone. Volume 3x in last hour', type: 'alpha' as const },
+  { text: '${token} just hit new ATH. Dev wallet hasn\'t sold a single token', type: 'alpha' as const },
+  { text: 'Huge buy wall forming on ${token}. Someone knows something', type: 'whale' as const },
+  { text: 'Insider alpha: ${token} partnership announcement dropping tomorrow', type: 'kol' as const },
+  { text: '${token} community just hit 50K holders. Organic growth only', type: 'alpha' as const },
+  { text: 'Tier 1 CEX listing rumor for ${token}. Load your bags', type: 'kol' as const },
+  { text: '${token} bonding curve about to complete. Migration to Raydium imminent', type: 'alpha' as const },
+  { text: 'Solana Foundation wallet just bought {amt} SOL worth of ${token}', type: 'whale' as const },
 ];
 
 const BEARISH_TEMPLATES = [
-  { text: '⚠️ DEV WALLET UNLOCKED for ${token}. {pct}% supply moving to CEX', type: 'dev' as const },
-  { text: '🚨 ${token} showing honeypot patterns. Sell volume is ZERO', type: 'rug' as const },
-  { text: '💀 Top holder of ${token} just dumped {pct}% of supply. RIP', type: 'whale' as const },
-  { text: '🔴 ${token} LP getting drained. Only {amt} SOL left in pool', type: 'rug' as const },
-  { text: '⚠️ ${token} dev team went silent. Telegram deleted. Not good', type: 'dev' as const },
-  { text: '🚩 Fake volume detected on ${token}. {pct}% is wash trading', type: 'rug' as const },
+  { text: 'DEV WALLET UNLOCKED for ${token}. {pct}% supply moving to CEX', type: 'dev' as const },
+  { text: '${token} showing honeypot patterns. Sell volume is ZERO', type: 'rug' as const },
+  { text: 'Top holder of ${token} just dumped {pct}% of supply. RIP', type: 'whale' as const },
+  { text: '${token} LP getting drained. Only {amt} SOL left in pool', type: 'rug' as const },
+  { text: '${token} dev team went silent. Telegram deleted. Not good', type: 'dev' as const },
+  { text: 'Fake volume detected on ${token}. {pct}% is wash trading', type: 'rug' as const },
 ];
 
 const NEUTRAL_TEMPLATES = [
-  { text: '📊 Solana DEX volume up {pct}% today. Money is flowing in', type: 'alpha' as const },
-  { text: '🔄 Capital rotating from dog coins to AI narrative. Watch ${token}', type: 'alpha' as const },
-  { text: '📉 BTC dominance dropping. Alt season loading for Solana memes', type: 'alpha' as const },
-  { text: '🤖 New MEV bot detected targeting ${token} pool. Set slippage carefully', type: 'alpha' as const },
+  { text: 'Solana DEX volume up {pct}% today. Money is flowing in', type: 'alpha' as const },
+  { text: 'Capital rotating from dog coins to AI narrative. Watch ${token}', type: 'alpha' as const },
+  { text: 'BTC dominance dropping. Alt season loading for Solana memes', type: 'alpha' as const },
+  { text: 'New MEV bot detected targeting ${token} pool. Set slippage carefully', type: 'alpha' as const },
 ];
 
 const TOKENS = ['BONK', 'WIF', 'POPCAT', 'JUP', 'RAY', 'MYRO', 'SLERF', 'BOME', 'BOOK', 'TRUMP', 'MOODENG'];

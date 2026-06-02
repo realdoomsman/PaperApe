@@ -74,7 +74,7 @@ export async function getTokenPrice(tokenAddress: string): Promise<{
         if (beData.data?.value) {
           const priceUsd = beData.data.value;
           const solPrice = await getSolPrice();
-          const priceSol = solPrice > 0 ? priceUsd / solPrice : 0;
+          const priceSol = priceUsd / (solPrice > 0 ? solPrice : 170);
           const result = { priceUsd, priceSol, liquidityUsd: beData.data.liquidity ?? 0 };
           await cacheSet(cacheKey, result, 5);
           return result;

@@ -137,7 +137,8 @@ export default function DashboardPage() {
 
   const displayBalance = balance ?? 100;
   const totalPnl = positions.reduce((s: number, p: any) => s + parseFloat(String(p.pnl_sol ?? p.pnl ?? 0)), 0);
-  const winRate = trades.length > 0 ? Math.round((trades.filter((t: any) => parseFloat(String(t.pnl_sol ?? t.pnl ?? 0)) > 0).length / trades.length) * 100) : 0;
+  const sellTrades = trades.filter((t: any) => t.trade_type === 'sell' || t.trade_type === 'sell_init');
+  const winRate = sellTrades.length > 0 ? Math.round((sellTrades.filter((t: any) => parseFloat(String(t.realized_pnl_sol ?? 0)) > 0).length / sellTrades.length) * 100) : 0;
   const isAuthed = !!authToken;
   const displayName = user?.displayName || user?.email?.split('@')[0] || 'explorer';
 
