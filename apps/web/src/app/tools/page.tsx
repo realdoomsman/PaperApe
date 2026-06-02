@@ -14,6 +14,7 @@ export default function ToolsPage() {
   const [psStop, setPsStop] = useState('10');
   const psResult = useCallback(() => {
     const b = parseFloat(psBalance || '0'), r = parseFloat(psRisk || '0'), s = parseFloat(psStop || '1');
+    if (!Number.isFinite(b) || !Number.isFinite(r) || !Number.isFinite(s) || s <= 0) return '0.0000';
     return ((b * (r / 100)) / (s / 100)).toFixed(4);
   }, [psBalance, psRisk, psStop]);
 
@@ -54,9 +55,10 @@ export default function ToolsPage() {
         throw new Error('API error');
       }
     } catch {
-      setRsResult({ score: 0, lp: '-', mint: '-', honey: '-', freeze: '-', error: 'Could not analyze token — try again' });
+      setRsResult({ score: 0, lp: '-', mint: '-', honey: '-', freeze: '-', error: 'Could not analyze token - try again' });
+    } finally {
+      setRsLoading(false);
     }
-    setRsLoading(false);
   }, [rsAddr]);
 
   // Slippage Calculator
@@ -64,6 +66,9 @@ export default function ToolsPage() {
   const [slPool, setSlPool] = useState('50');
   const slResult = useCallback(() => {
     const a = parseFloat(slAmt || '0'), p = parseFloat(slPool || '1');
+    if (!Number.isFinite(a) || !Number.isFinite(p) || p <= 0) {
+      return { pct: '0.00', impact: 'Low', color: 'var(--green)' };
+    }
     const slip = (a / p) * 100;
     return { pct: slip.toFixed(2), impact: slip < 1 ? 'Low' : slip < 5 ? 'Medium' : 'High', color: slip < 1 ? 'var(--green)' : slip < 5 ? 'var(--gold)' : 'var(--red)' };
   }, [slAmt, slPool]);
@@ -127,7 +132,7 @@ export default function ToolsPage() {
                 <div><div className="tool-result-label">Safety Score</div><div className="tool-result-val" style={{ color: rsResult.score > 70 ? 'var(--green)' : rsResult.score > 40 ? 'var(--gold)' : 'var(--red)' }}>{rsResult.score}/100</div></div>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 8 }}>
-                <div><div className="tool-label">LP Status</div><div className="mono" style={{ color: rsResult.lp === 'Locked' ? 'var(--green)' : 'var(--red)', fontSize: 12, fontWeight: 600 }}>{rsResult.lp}</div></div>
+                <div><div className="tool-label">LP Status</div><div className="mono" style={{ color: rsResult.lp.startsWith('Locked') ? 'var(--green)' : 'var(--red)', fontSize: 12, fontWeight: 600 }}>{rsResult.lp}</div></div>
                 <div><div className="tool-label">Mint Auth</div><div className="mono" style={{ color: rsResult.mint === 'Revoked' ? 'var(--green)' : 'var(--red)', fontSize: 12, fontWeight: 600 }}>{rsResult.mint}</div></div>
                 <div><div className="tool-label">Honeypot</div><div className="mono" style={{ color: rsResult.honey === 'Clear' ? 'var(--green)' : 'var(--red)', fontSize: 12, fontWeight: 600 }}>{rsResult.honey}</div></div>
                 <div><div className="tool-label">Freeze Auth</div><div className="mono" style={{ color: rsResult.freeze === 'Revoked' ? 'var(--green)' : 'var(--red)', fontSize: 12, fontWeight: 600 }}>{rsResult.freeze}</div></div>

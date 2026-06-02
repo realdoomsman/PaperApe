@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import AppShell from '@/components/AppShell';
@@ -43,6 +43,19 @@ const defaultFilters: TrenchFilters = {
   filterTab: 'protocols',
 };
 
+function buildTrenchParams(filters: TrenchFilters): URLSearchParams {
+  const params = new URLSearchParams();
+  if (filters.minMcap) params.set('minMcap', filters.minMcap);
+  if (filters.maxMcap) params.set('maxMcap', filters.maxMcap);
+  if (filters.minLiq) params.set('minLiq', filters.minLiq);
+  if (filters.maxLiq) params.set('maxLiq', filters.maxLiq);
+  if (filters.minVol) params.set('minVol', filters.minVol);
+  if (filters.maxVol) params.set('maxVol', filters.maxVol);
+  if (filters.protocol) params.set('protocol', filters.protocol);
+  if (filters.keyword) params.set('keyword', filters.keyword);
+  return params;
+}
+
 function fmtMcap(n: number): string {
   if (n >= 1e9) return `${(n / 1e9).toFixed(2)}B`;
   if (n >= 1e6) return `${(n / 1e6).toFixed(2)}M`;
@@ -79,13 +92,20 @@ export default function DiscoverPage() {
   const { mode } = useMode();
   const router = useRouter();
   const [tokens, setTokens] = useState<Token[]>([]);
+  const [trendingTokens, setTrendingTokens] = useState<Token[]>([]);
   const [trenchData, setTrenchData] = useState<{ newPairs: Token[]; finalStretch: Token[]; migrated: Token[] }>({ newPairs: [], finalStretch: [], migrated: [] });
   const [loading, setLoading] = useState(true);
+  const [marketError, setMarketError] = useState('');
   const [tab, setTab] = useState<FilterTab>('trending');
   const [search, setSearch] = useState('');
+  const searchRef = useRef('');
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState<TrenchFilters>(defaultFilters);
   const [sortBy, setSortBy] = useState<'volume' | 'mcap' | 'change' | 'new'>('volume');
+
+  useEffect(() => {
+    searchRef.current = search;
+  }, [search]);
 
   // Watchlist (localStorage-backed)
   const [watchlist, setWatchlist] = useState<Set<string>>(new Set());
@@ -105,6 +125,67 @@ export default function DiscoverPage() {
   };
   const watchlistTokens = useMemo(() => tokens.filter(t => watchlist.has(t.address)), [tokens, watchlist]);
 
+  const loadMarketData = useCallback(async () => {
+    setLoading(true);
+    setMarketError('');
+    try {
+      const [trendRes, trenchRes] = await Promise.all([
+        apiRequest('GET', '/tokens/trending'),
+        apiRequest('GET', '/tokens/trenches'),
+      ]);
+
+      let loaded = false;
+      if (trendRes.success && trendRes.data?.tokens) {
+        const nextTokens = trendRes.data.tokens;
+        setTrendingTokens(nextTokens);
+        if (!searchRef.current.trim()) setTokens(nextTokens);
+        loaded = true;
+      }
+      if (trenchRes.success && trenchRes.data) {
+        setTrenchData({
+          newPairs: trenchRes.data.newPairs || [],
+          finalStretch: trenchRes.data.finalStretch || [],
+          migrated: trenchRes.data.migrated || [],
+        });
+        loaded = true;
+      }
+
+      if (!loaded) setMarketError('Could not load market data. Try refreshing.');
+    } catch {
+      setMarketError('Could not load market data. Try refreshing.');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const applyTrenchFilters = useCallback(async (nextFilters: TrenchFilters = filters) => {
+    setLoading(true);
+    setMarketError('');
+    try {
+      const params = buildTrenchParams(nextFilters);
+      const suffix = params.toString();
+      const r = await apiRequest('GET', `/tokens/trenches${suffix ? `?${suffix}` : ''}`);
+      if (r.success && r.data) {
+        setTrenchData({
+          newPairs: r.data.newPairs || [],
+          finalStretch: r.data.finalStretch || [],
+          migrated: r.data.migrated || [],
+        });
+      } else {
+        setMarketError(r.error || 'Could not apply filters.');
+      }
+    } catch {
+      setMarketError('Could not apply filters.');
+    } finally {
+      setLoading(false);
+    }
+  }, [filters]);
+
+  const resetTrenchFilters = useCallback(() => {
+    setFilters(defaultFilters);
+    applyTrenchFilters(defaultFilters);
+  }, [applyTrenchFilters]);
+
   // Auto-refresh
   const [autoRefresh, setAutoRefresh] = useState<number>(0); // 0=off, 10000, 30000
   useEffect(() => {
@@ -114,7 +195,10 @@ export default function DiscoverPage() {
         apiRequest('GET', '/tokens/trending'),
         apiRequest('GET', '/tokens/trenches'),
       ]).then(([trendRes, trenchRes]) => {
-        if (trendRes.success && trendRes.data?.tokens) setTokens(trendRes.data.tokens);
+        if (trendRes.success && trendRes.data?.tokens) {
+          setTrendingTokens(trendRes.data.tokens);
+          if (!searchRef.current.trim()) setTokens(trendRes.data.tokens);
+        }
         if (trenchRes.success && trenchRes.data) {
           setTrenchData({
             newPairs: trenchRes.data.newPairs || [],
@@ -129,25 +213,20 @@ export default function DiscoverPage() {
 
   // Fetch data
   useEffect(() => {
-    setLoading(true);
-    Promise.all([
-      apiRequest('GET', '/tokens/trending'),
-      apiRequest('GET', '/tokens/trenches'),
-    ]).then(([trendRes, trenchRes]) => {
-      if (trendRes.success && trendRes.data?.tokens) setTokens(trendRes.data.tokens);
-      if (trenchRes.success && trenchRes.data) {
-        setTrenchData({
-          newPairs: trenchRes.data.newPairs || [],
-          finalStretch: trenchRes.data.finalStretch || [],
-          migrated: trenchRes.data.migrated || [],
-        });
-      }
-    }).catch(() => {}).finally(() => setLoading(false));
-  }, []);
+    loadMarketData();
+  }, [loadMarketData]);
 
   // Search handler (any SOL coin)
   useEffect(() => {
-    if (!search.trim()) return;
+    if (!search.trim()) {
+      setMarketError('');
+      if (trendingTokens.length > 0) {
+        setTokens(trendingTokens);
+      } else {
+        loadMarketData();
+      }
+      return;
+    }
 
     // Auto-detect contract address
     const isCA = search.length >= 32 && /^[1-9A-HJ-NP-Za-km-z]+$/.test(search);
@@ -158,11 +237,20 @@ export default function DiscoverPage() {
 
     const timeout = setTimeout(() => {
       apiRequest('GET', `/tokens/search?q=${encodeURIComponent(search.trim())}`).then(r => {
-        if (r.success && r.data?.tokens?.length > 0) setTokens(r.data.tokens);
-      }).catch(() => {});
+        if (r.success && r.data?.tokens) {
+          setTokens(r.data.tokens);
+          setMarketError('');
+        } else {
+          setTokens([]);
+          setMarketError(r.error || 'Search failed. Try another token.');
+        }
+      }).catch(() => {
+        setTokens([]);
+        setMarketError('Search failed. Try another token.');
+      });
     }, 500);
     return () => clearTimeout(timeout);
-  }, [search, router]);
+  }, [search, router, trendingTokens, loadMarketData]);
 
   // Sort trending
   const sortedTokens = useMemo(() => {
@@ -236,6 +324,13 @@ export default function DiscoverPage() {
           </button>
         )}
       </div>
+
+      {marketError && (
+        <div className="card an an1" style={{ marginBottom: 14, padding: 14, borderColor: 'rgba(255,59,92,0.16)', display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center' }}>
+          <span style={{ fontSize: 12, color: 'var(--red)', fontWeight: 600 }}>{marketError}</span>
+          <button className="btn haptic" onClick={loadMarketData} style={{ padding: '6px 12px', fontSize: 11 }}>Retry</button>
+        </div>
+      )}
 
       {loading ? (
         <div className="card an an2" style={{ padding: '4px 0' }}>
@@ -386,32 +481,13 @@ export default function DiscoverPage() {
                       </div>
                     </div>
                   ))}
-                  <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
-                    <button onClick={() => setFilters(defaultFilters)} className="btn haptic" style={{ fontSize: 10, padding: '6px 14px' }}>Reset</button>
-                    <button onClick={() => {
-                      setLoading(true);
-                      const params = new URLSearchParams();
-                      if (filters.minMcap) params.set('minMcap', filters.minMcap);
-                      if (filters.maxMcap) params.set('maxMcap', filters.maxMcap);
-                      if (filters.minLiq) params.set('minLiq', filters.minLiq);
-                      if (filters.maxLiq) params.set('maxLiq', filters.maxLiq);
-                      if (filters.minVol) params.set('minVol', filters.minVol);
-                      if (filters.maxVol) params.set('maxVol', filters.maxVol);
-                      if (filters.protocol) params.set('protocol', filters.protocol);
-                      if (filters.keyword) params.set('keyword', filters.keyword);
-                      apiRequest('GET', `/tokens/trenches?${params.toString()}`).then(r => {
-                        if (r.success && r.data) {
-                          setTrenchData({
-                            newPairs: r.data.newPairs || [],
-                            finalStretch: r.data.finalStretch || [],
-                            migrated: r.data.migrated || [],
-                          });
-                        }
-                      }).finally(() => setLoading(false));
-                    }} className="btn primary haptic" style={{ fontSize: 10, padding: '6px 14px' }}>Apply Filters</button>
-                  </div>
                 </div>
               )}
+
+              <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
+                <button onClick={resetTrenchFilters} className="btn haptic" style={{ fontSize: 10, padding: '6px 14px' }}>Reset</button>
+                <button onClick={() => applyTrenchFilters()} className="btn primary haptic" style={{ fontSize: 10, padding: '6px 14px' }}>Apply Filters</button>
+              </div>
             </div>
           )}
 

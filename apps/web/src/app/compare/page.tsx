@@ -56,6 +56,8 @@ export default function ComparePage() {
   const [loadingB, setLoadingB] = useState(false);
   const [resultsA, setResultsA] = useState<any[]>([]);
   const [resultsB, setResultsB] = useState<any[]>([]);
+  const [errorA, setErrorA] = useState('');
+  const [errorB, setErrorB] = useState('');
   const debounceA = useRef<ReturnType<typeof setTimeout> | null>(null);
   const debounceB = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -63,11 +65,25 @@ export default function ComparePage() {
     const timerRef = side === 'A' ? debounceA : debounceB;
     if (timerRef.current) clearTimeout(timerRef.current);
     const setResults = side === 'A' ? setResultsA : setResultsB;
+    const setError = side === 'A' ? setErrorA : setErrorB;
+    setError('');
     if (!q.trim()) { setResults([]); return; }
     timerRef.current = setTimeout(async () => {
       const r = await apiRequest('GET', `/tokens/search?q=${encodeURIComponent(q)}`);
-      if (r.success && r.data?.tokens) setResults(r.data.tokens.slice(0, 5));
+      if (r.success && r.data?.tokens) {
+        setResults(r.data.tokens.slice(0, 5));
+      } else {
+        setResults([]);
+        setError(r.error || 'Search failed. Try again.');
+      }
     }, 400);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (debounceA.current) clearTimeout(debounceA.current);
+      if (debounceB.current) clearTimeout(debounceB.current);
+    };
   }, []);
 
   const selectToken = async (t: any, side: 'A' | 'B') => {
@@ -75,8 +91,10 @@ export default function ComparePage() {
     const setToken = side === 'A' ? setTokenA : setTokenB;
     const setSearch = side === 'A' ? setSearchA : setSearchB;
     const setResults = side === 'A' ? setResultsA : setResultsB;
+    const setError = side === 'A' ? setErrorA : setErrorB;
 
     setLoading(true);
+    setError('');
     setSearch(t.symbol || t.name);
     setResults([]);
     try {
@@ -94,14 +112,17 @@ export default function ComparePage() {
           mcap: token.marketCap,
           image: token.image ?? undefined,
         });
+      } else {
+        setError(r.error || 'Could not load token details.');
       }
-    } catch {
-      // silently handle fetch error
+    } catch (err: any) {
+      setError(err?.message || 'Could not load token details.');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
-  const TokenInput = ({ side, search: sq, setSearch: ss, results, loading, token }: any) => (
+  const TokenInput = ({ side, search: sq, setSearch: ss, results, loading, token, error }: any) => (
     <div style={{ flex: 1 }}>
       <div style={{ position: 'relative' }}>
         <input className="inp" value={sq} onChange={e => { ss(e.target.value); search(e.target.value, side); }}
@@ -124,6 +145,7 @@ export default function ComparePage() {
           </div>
         )}
       </div>
+      {error && <div style={{ marginTop: 6, fontSize: 11, color: 'var(--red)' }}>{error}</div>}
       {loading && <div className="skeleton" style={{ height: 60, borderRadius: 8, marginTop: 8 }} />}
       {token && !loading && (
         <div style={{ marginTop: 10, padding: '14px 16px', background: 'var(--bg-1)', border: '1px solid var(--border-1)', borderRadius: 10, textAlign: 'center' }}>
@@ -148,9 +170,9 @@ export default function ComparePage() {
 
       {/* Search Inputs */}
       <div style={{ display: 'flex', gap: 16, marginBottom: 20, alignItems: 'flex-start' }}>
-        <TokenInput side="A" search={searchA} setSearch={setSearchA} results={resultsA} loading={loadingA} token={tokenA} />
+        <TokenInput side="A" search={searchA} setSearch={setSearchA} results={resultsA} loading={loadingA} token={tokenA} error={errorA} />
         <div style={{ paddingTop: 12, fontSize: 16, fontWeight: 800, color: 'var(--t3)' }}>VS</div>
-        <TokenInput side="B" search={searchB} setSearch={setSearchB} results={resultsB} loading={loadingB} token={tokenB} />
+        <TokenInput side="B" search={searchB} setSearch={setSearchB} results={resultsB} loading={loadingB} token={tokenB} error={errorB} />
       </div>
 
       {/* Comparison Table */}

@@ -1,5 +1,6 @@
 import { Router } from 'express';
-import { authenticateRequest } from '../services/auth.js';
+import { FieldValue } from 'firebase-admin/firestore';
+import { authenticateRequest, mockUsers } from '../services/auth.js';
 import { db, isMockMode } from '../lib/firebase.js';
 
 export const walletsRouter = Router();
@@ -36,6 +37,29 @@ function getDefaultWallet(userId: string, balance: number) {
     type: 'main',
     createdAt: new Date().toISOString(),
   };
+}
+
+export async function applyPrimaryWalletBalanceDelta(userId: string, delta: number) {
+  if (!Number.isFinite(delta) || delta === 0) return;
+
+  if (isMockMode) {
+    const wallets = mockWallets.get(userId);
+    const primary = wallets?.find(w => w.isPrimary);
+    if (primary) {
+      primary.balance = Math.max(0, (Number(primary.balance) || 0) + delta);
+    }
+    return;
+  }
+
+  const walletSnap = await db.collection('users').doc(userId)
+    .collection('wallets')
+    .where('isPrimary', '==', true)
+    .limit(1)
+    .get();
+
+  if (!walletSnap.empty) {
+    await walletSnap.docs[0].ref.update({ balance: FieldValue.increment(delta) });
+  }
 }
 
 /**
@@ -135,8 +159,14 @@ walletsRouter.post('/reset', async (req: any, res) => {
     const userId = req.user.id;
 
     if (isMockMode) {
-      const wallets = mockWallets.get(userId);
-      if (wallets) {
+      const user = mockUsers.get(userId);
+      if (user) user.paper_balance = 100;
+
+      let wallets = mockWallets.get(userId);
+      if (!wallets) {
+        wallets = [getDefaultWallet(userId, 100)];
+        mockWallets.set(userId, wallets);
+      } else {
         const primary = wallets.find(w => w.isPrimary);
         if (primary) primary.balance = 100;
       }

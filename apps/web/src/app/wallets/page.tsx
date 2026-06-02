@@ -124,8 +124,15 @@ export default function WalletsPage() {
   const fund = useCallback(async (id: string, amt: number) => {
     if (!authToken) return;
     const r = await apiRequest('POST', '/auth/fund', { amount: amt }, authToken);
-    if (r.success) { setWallets(p => p.map(w => w.id === id ? { ...w, balance: w.balance + amt } : w)); showMsg(`Added ${amt} SOL`); }
-    else showMsg(r.error || 'Failed');
+    if (r.success) {
+      const refreshed = await apiRequest('GET', '/wallets', undefined, authToken);
+      if (refreshed.success && refreshed.data?.wallets) {
+        setWallets(refreshed.data.wallets);
+      } else {
+        setWallets(p => p.map(w => w.id === id ? { ...w, balance: w.balance + amt } : w));
+      }
+      showMsg(`Added ${amt} SOL`);
+    } else showMsg(r.error || 'Failed');
   }, [authToken, showMsg]);
 
   const copy = useCallback((a: string) => {
@@ -437,7 +444,7 @@ export default function WalletsPage() {
                             <div className="mono" style={{ fontSize: 10, color: 'var(--t3)' }}>${t.amountUsd.toFixed(2)}</div>
                           </div>
                           <button onClick={() => {
-                            window.location.href = `/terminal?token=${t.tokenAddress}`;
+                            window.location.href = `/terminal?ca=${encodeURIComponent(t.tokenAddress)}`;
                           }} className="btn primary haptic" style={{ padding: '6px 12px', fontSize: 10, fontWeight: 700, marginLeft: 8 }}>
                             Copy Trade
                           </button>

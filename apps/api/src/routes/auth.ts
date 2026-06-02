@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { authenticateRequest, verifyFirebaseToken, upsertUser } from '../services/auth.js';
+import { applyPrimaryWalletBalanceDelta } from './wallets.js';
 
 export const authRouter = Router();
 
@@ -82,9 +83,13 @@ authRouter.post('/fund', async (req, res) => {
 
     const { fundUser } = await import('../services/auth.js');
     const updated = await fundUser(user.id, amount);
+    try {
+      await applyPrimaryWalletBalanceDelta(user.id, amount);
+    } catch (walletErr) {
+      console.warn('Wallet balance sync failed after funding:', walletErr);
+    }
     res.json({ success: true, data: { user: updated, amount_added: amount } });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
   }
 });
-
