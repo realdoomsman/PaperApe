@@ -231,18 +231,24 @@ export async function executeBuy(userId: string, req: BuyRequest): Promise<{
   const isAddOn = !!existingPosRef;
 
   const result = await db.runTransaction(async (txn) => {
-    // Re-read inside transaction for consistency
+    // Firestore requires every transaction read before any write.
     const userSnapshot = await txn.get(userDocRef);
     const userData = userSnapshot.data();
 
+    let existingPosSnap: FirebaseFirestore.DocumentSnapshot | null = null;
+    if (existingPosRef) {
+      existingPosSnap = await txn.get(existingPosRef);
+    }
+
+    // Validate before mutating the position or balance.
     if (!userSnapshot.exists || !userData || (userData.paper_balance ?? 0) < req.amount_sol) {
       throw new Error(`Insufficient balance. Have ${userData?.paper_balance ?? 0} SOL, need ${req.amount_sol} SOL`);
     }
 
+    // Writes start here.
     let position: any;
 
-    if (existingPosRef) {
-      const existingPosSnap = await txn.get(existingPosRef);
+    if (existingPosRef && existingPosSnap?.exists) {
       const data = existingPosSnap.data()!;
       const realizedPnl = parseFloat(String(data.realized_pnl_sol ?? 0));
       const newTotalSol = (data.amount_sol ?? 0) + req.amount_sol;
@@ -417,14 +423,21 @@ export async function executeSell(userId: string, req: SellRequest): Promise<{
   assertTradablePrice(priceData, preData.token_address, true);
   const marketPriceSol = priceData.priceSol;
 
-  const result = await db.runTransaction(async (txn) => {
-    const positionSnapshot = await txn.get(positionDocRef);
-    const position = positionSnapshot.data();
+  const userDocRef = db.collection('users').doc(userId);
 
+  const result = await db.runTransaction(async (txn) => {
+    // Firestore requires every transaction read before any write.
+    const positionSnapshot = await txn.get(positionDocRef);
+    const userSnapshot = await txn.get(userDocRef);
+    const position = positionSnapshot.data();
+    const userData = userSnapshot.data();
+
+    // Validate before mutating the position or balance.
     if (!positionSnapshot.exists || !position || position.user_id !== userId || position.status !== 'open') {
       throw new Error('Position not found or already closed');
     }
 
+    // Compute the sale from the immutable transaction snapshot.
     const tokensRemaining = position.tokens_remaining ?? 0;
     const tokensToSell = tokensRemaining * (req.percentage / 100);
     if (tokensToSell <= 0) throw new Error('No tokens available to sell');
@@ -455,9 +468,9 @@ export async function executeSell(userId: string, req: SellRequest): Promise<{
       closed_at: isClosed ? new Date().toISOString() : null,
     };
 
+    // Writes start here.
     txn.update(positionDocRef, updatedPosData);
 
-    // Create trade record
     const newTradeRef = userTradesCol(userId).doc();
     const tradeData = {
       user_id: userId,
@@ -475,10 +488,6 @@ export async function executeSell(userId: string, req: SellRequest): Promise<{
     };
     txn.set(newTradeRef, tradeData);
 
-    // Credit balance
-    const userDocRef = db.collection('users').doc(userId);
-    const userSnapshot = await txn.get(userDocRef);
-    const userData = userSnapshot.data();
     txn.update(userDocRef, {
       paper_balance: (userData?.paper_balance ?? 0) + solReceived,
     });
@@ -566,14 +575,21 @@ export async function executeSellInit(userId: string, req: SellInitRequest): Pro
   assertTradablePrice(priceData, preData.token_address, true);
   const marketPriceSol = priceData.priceSol;
 
-  const result = await db.runTransaction(async (txn) => {
-    const positionSnapshot = await txn.get(positionDocRef);
-    const position = positionSnapshot.data();
+  const userDocRef = db.collection('users').doc(userId);
 
+  const result = await db.runTransaction(async (txn) => {
+    // Firestore requires every transaction read before any write.
+    const positionSnapshot = await txn.get(positionDocRef);
+    const userSnap = await txn.get(userDocRef);
+    const position = positionSnapshot.data();
+    const userData = userSnap.data();
+
+    // Validate before mutating the position or balance.
     if (!positionSnapshot.exists || !position || position.user_id !== userId || position.status !== 'open') {
       throw new Error('Position not found');
     }
 
+    // Compute the sell-init from the immutable transaction snapshot.
     const originalAmountSol = parseFloat(String(position.amount_sol));
     const fees = calculateFees();
     const tokensToSell = calculateSellInitTokens(originalAmountSol, marketPriceSol, EXECUTION_SLIPPAGE_PERCENT, fees);
@@ -601,9 +617,9 @@ export async function executeSellInit(userId: string, req: SellInitRequest): Pro
       pnl_percent: 999, // Infinite return (0 cost basis)
     };
 
+    // Writes start here.
     txn.update(positionDocRef, updatedData);
 
-    // Create trade record
     const newTradeRef = userTradesCol(userId).doc();
     const tradeData = {
       user_id: userId,
@@ -621,10 +637,6 @@ export async function executeSellInit(userId: string, req: SellInitRequest): Pro
     };
     txn.set(newTradeRef, tradeData);
 
-    // Credit balance
-    const userDocRef = db.collection('users').doc(userId);
-    const userSnap = await txn.get(userDocRef);
-    const userData = userSnap.data();
     txn.update(userDocRef, { paper_balance: (userData?.paper_balance ?? 0) + solReceived });
 
     return {

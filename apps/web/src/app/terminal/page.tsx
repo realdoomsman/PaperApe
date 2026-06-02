@@ -650,6 +650,7 @@ function TerminalInner() {
 
   return (
     <AppShell balance={displayBalance}>
+      <div className="terminal-readable">
       {/* Stackable Toasts */}
       {toasts.length > 0 && (
         <div style={{ position: 'fixed', top: 16, right: 16, zIndex: 9999, display: 'flex', flexDirection: 'column', gap: 6, maxWidth: 340 }}>
@@ -1152,7 +1153,7 @@ function TerminalInner() {
         </div>
 
         {/* Right column: Trade Panel + Positions */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <div className="terminal-right" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div className="card">
             <div className="card-pad">
               <div className="card-title" style={{ marginBottom: 14 }}>{tab === 'buy' ? `Buy ${displaySymbol}` : `Sell ${displaySymbol}`}</div>
@@ -1463,6 +1464,7 @@ function TerminalInner() {
             </div>
           )}
         </div>
+      </div>
       </div>
     </AppShell>
   );
