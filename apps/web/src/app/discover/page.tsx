@@ -299,7 +299,7 @@ export default function DiscoverPage() {
           <IconBolt /> Trenches
         </button>
         <button onClick={() => setTab('watchlist')} className={`preset ${tab === 'watchlist' ? 'on' : ''}`} style={{ padding: '7px 16px', fontSize: 11, display: 'flex', alignItems: 'center', gap: 5, color: tab === 'watchlist' ? 'var(--gold)' : undefined }}>
-          ⭐ Watchlist{watchlist.size > 0 && <span style={{ fontSize: 9, background: 'var(--gold-bg)', color: 'var(--gold)', padding: '1px 5px', borderRadius: 8, fontWeight: 700 }}>{watchlist.size}</span>}
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg> Watchlist{watchlist.size > 0 && <span style={{ fontSize: 9, background: 'var(--gold-bg)', color: 'var(--gold)', padding: '1px 5px', borderRadius: 8, fontWeight: 700 }}>{watchlist.size}</span>}
         </button>
         <div style={{ flex: '1 1 40px' }} />
         {/* Auto-refresh toggle */}
@@ -351,7 +351,7 @@ export default function DiscoverPage() {
         <div className="card an an2" style={{ overflowX: 'auto' }}>
           {watchlistTokens.length === 0 ? (
             <div style={{ padding: '50px 20px', textAlign: 'center' }}>
-              <div style={{ fontSize: 24, marginBottom: 8 }}>⭐</div>
+              <div style={{ fontSize: 24, marginBottom: 8, display: 'flex', justifyContent: 'center' }}><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg></div>
               <div style={{ fontSize: 13, color: 'var(--t2)', marginBottom: 8 }}>Your watchlist is empty</div>
               <div style={{ fontSize: 11, color: 'var(--t3)' }}>Star tokens from Trending or Trenches to add them here</div>
             </div>
@@ -375,7 +375,7 @@ export default function DiscoverPage() {
                     <td className={`mono ${t.priceChange24h >= 0 ? 'up' : 'down'}`}>{t.priceChange24h >= 0 ? '+' : ''}{t.priceChange24h.toFixed(1)}%</td>
                     <td className="mono">{fmtVol(t.volume24h)}</td>
                     <td>
-                      <button onClick={(e) => { e.stopPropagation(); toggleWatchlist(t.address); }} className="haptic" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, padding: 4 }}>⭐</button>
+                      <button onClick={(e) => { e.stopPropagation(); toggleWatchlist(t.address); }} className="haptic" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, display: 'inline-flex', alignItems: 'center' }}><svg width="14" height="14" viewBox="0 0 24 24" fill="var(--gold)" stroke="none"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg></button>
                     </td>
                   </tr>
                 ))}
@@ -418,7 +418,7 @@ export default function DiscoverPage() {
                       Trade
                     </button>
                     <button onClick={(e) => { e.stopPropagation(); toggleWatchlist(tk.address); }} className="haptic" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, padding: 4, opacity: watchlist.has(tk.address) ? 1 : 0.3 }} title={watchlist.has(tk.address) ? 'Remove from watchlist' : 'Add to watchlist'}>
-                      {watchlist.has(tk.address) ? '⭐' : '☆'}
+                      {watchlist.has(tk.address) ? <svg width="14" height="14" viewBox="0 0 24 24" fill="var(--gold)" stroke="none"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg> : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>}
                     </button>
                   </td>
                 </tr>

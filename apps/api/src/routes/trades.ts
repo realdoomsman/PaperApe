@@ -8,12 +8,17 @@ export const tradesRouter = Router();
 
 // ─── Auth Middleware ────────────────────────────────────
 async function requireAuth(req: any, res: any, next: any) {
-  const user = await authenticateRequest(req.headers.authorization);
-  if (!user) {
+  try {
+    const user = await authenticateRequest(req.headers.authorization);
+    if (!user) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+    req.user = user;
+    next();
+  } catch (err) {
+    console.error('Auth middleware error:', err);
     return res.status(401).json({ success: false, error: 'Unauthorized' });
   }
-  req.user = user;
-  next();
 }
 
 tradesRouter.use(requireAuth);
@@ -27,9 +32,6 @@ tradesRouter.post('/buy', async (req, res) => {
     const buyReq: BuyRequest = {
       token_address: req.body.token_address,
       amount_sol: parseFloat(req.body.amount_sol),
-      slippage_tolerance: req.body.slippage_tolerance
-        ? parseFloat(req.body.slippage_tolerance)
-        : undefined,
       priority: ['normal', 'turbo', 'yolo'].includes(req.body.priority)
         ? req.body.priority
         : undefined,
@@ -133,7 +135,7 @@ tradesRouter.get('/positions', async (req, res) => {
 
 /**
  * GET /trades/history
- * Get user's trade log (buys + sells). 
+ * Get user's transaction/fill log (buys + sells).
  */
 tradesRouter.get('/history', async (req, res) => {
   try {
@@ -157,6 +159,9 @@ tradesRouter.post('/auto-orders', async (req, res) => {
     }
     if (!['tp', 'sl', 'trailing_sl'].includes(type)) {
       return res.status(400).json({ success: false, error: 'Invalid order type' });
+    }
+    if (isNaN(parseFloat(trigger_percent)) || isNaN(parseFloat(entry_price))) {
+      return res.status(400).json({ success: false, error: 'trigger_percent and entry_price must be numeric' });
     }
     const order = await createAutoOrder({
       user_id: req.user.id,
@@ -229,6 +234,9 @@ tradesRouter.post('/dca', async (req, res) => {
   try {
     const { createDCAOrder } = await import('../services/dcaEngine.js');
     const { token_address, token_symbol, amount_per_buy, interval, interval_ms, total_buys, slippage } = req.body;
+    if (!token_address || !amount_per_buy || !total_buys) {
+      return res.status(400).json({ success: false, error: 'Missing required fields: token_address, amount_per_buy, total_buys' });
+    }
     const legacyIntervals: Record<string, string> = {
       '60000': '1m',
       '300000': '5m',
@@ -245,7 +253,6 @@ tradesRouter.post('/dca', async (req, res) => {
       parseFloat(amount_per_buy),
       normalizedInterval,
       parseInt(total_buys),
-      slippage ? parseFloat(slippage) : 15,
     );
     res.json({ success: true, data: { order } });
   } catch (err: any) {

@@ -2,6 +2,10 @@ import { Router } from 'express';
 
 export const tokensRouter = Router();
 
+function isValidSolanaAddress(addr: string): boolean {
+  return /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(addr);
+}
+
 const DEXSCREENER_API = 'https://api.dexscreener.com';
 const BIRDEYE_API = 'https://public-api.birdeye.so';
 const BIRDEYE_KEY = process.env.BIRDEYE_API_KEY ?? '';
@@ -464,15 +468,25 @@ tokensRouter.get('/prices', async (req, res) => {
     const addresses = addressesParam.split(',').map(a => a.trim()).filter(Boolean).slice(0, 50);
     const prices: Record<string, { priceUsd: number; priceSol: number }> = {};
 
-    for (const addr of addresses) {
-      try {
-        const r = await fetch(`${DEXSCREENER_API}/latest/dex/tokens/${addr}`, { signal: AbortSignal.timeout(5000) });
-        const d = await r.json();
-        const pair = (d.pairs ?? []).filter((p: any) => p.chainId === 'solana').sort((a: any, b: any) => (b.liquidity?.usd ?? 0) - (a.liquidity?.usd ?? 0))[0];
-        if (pair) {
-          prices[addr] = { priceUsd: parseFloat(pair.priceUsd ?? '0'), priceSol: parseFloat(pair.priceNative ?? '0') };
-        }
-      } catch {}
+    // Batch in groups of 5 for parallel fetching
+    for (let i = 0; i < addresses.length; i += 5) {
+      const batch = addresses.slice(i, i + 5);
+      const results = await Promise.all(
+        batch.map(async (addr) => {
+          try {
+            const r = await fetch(`${DEXSCREENER_API}/latest/dex/tokens/${addr}`, { signal: AbortSignal.timeout(5000) });
+            const d = await r.json();
+            const pair = (d.pairs ?? []).filter((p: any) => p.chainId === 'solana').sort((a: any, b: any) => (b.liquidity?.usd ?? 0) - (a.liquidity?.usd ?? 0))[0];
+            if (pair) {
+              return { addr, priceUsd: parseFloat(pair.priceUsd ?? '0'), priceSol: parseFloat(pair.priceNative ?? '0') };
+            }
+          } catch {}
+          return null;
+        })
+      );
+      for (const r of results) {
+        if (r) prices[r.addr] = { priceUsd: r.priceUsd, priceSol: r.priceSol };
+      }
     }
 
     res.json({ success: true, data: { prices } });
@@ -484,6 +498,9 @@ tokensRouter.get('/prices', async (req, res) => {
 // ─── GET /tokens/rugcheck/:address ──────────────────────
 tokensRouter.get('/rugcheck/:address', async (req, res) => {
   try {
+    if (!isValidSolanaAddress(req.params.address)) {
+      return res.status(400).json({ success: false, error: 'Invalid Solana address' });
+    }
     const { getRugCheckReport } = await import('../services/rugcheck.js');
     const report = await getRugCheckReport(req.params.address);
     res.json({ success: true, data: report });
@@ -496,6 +513,9 @@ tokensRouter.get('/rugcheck/:address', async (req, res) => {
 tokensRouter.get('/:address', async (req, res) => {
   try {
     const address = req.params.address;
+    if (!isValidSolanaAddress(address)) {
+      return res.status(400).json({ success: false, error: 'Invalid Solana address' });
+    }
 
     // Check cache first
     const cached = tokenDetailCache.get(address);

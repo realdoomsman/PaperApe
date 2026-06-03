@@ -64,7 +64,7 @@ app.use(cors({
   },
   credentials: true,
 }));
-app.use(express.json());
+app.use(express.json({ limit: '100kb' }));
 
 // ─── Rate Limiting (300 req/min per IP — Redis-backed) ──
 import { checkRateLimit } from './lib/cache.js';
@@ -134,6 +134,11 @@ app.use('/tokens', tokensRouter);
 app.use('/wallets', walletsRouter);
 app.use('/academy', academyRouter);
 app.use('/alerts', alertsRouter);
+
+// ─── 404 Catch-All ──────────────────────────────────────
+app.use((_req, res) => {
+  res.status(404).json({ success: false, error: 'Not found' });
+});
 
 // ─── HTTP + WebSocket Server ────────────────────────────
 const server = createServer(app);

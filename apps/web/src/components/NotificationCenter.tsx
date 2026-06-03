@@ -41,7 +41,7 @@ export default function NotificationCenter() {
       };
       setNotifications(prev => {
         const next = [n, ...prev].slice(0, 50);
-        localStorage.setItem('pa_notifications', JSON.stringify(next));
+        try { localStorage.setItem('pa_notifications', JSON.stringify(next)); } catch {}
         return next;
       });
     };
@@ -62,14 +62,14 @@ export default function NotificationCenter() {
   const markAllRead = () => {
     setNotifications(prev => {
       const next = prev.map(n => ({ ...n, read: true }));
-      localStorage.setItem('pa_notifications', JSON.stringify(next));
+      try { localStorage.setItem('pa_notifications', JSON.stringify(next)); } catch {}
       return next;
     });
   };
 
   const clearAll = () => {
     setNotifications([]);
-    localStorage.removeItem('pa_notifications');
+    try { localStorage.removeItem('pa_notifications'); } catch {}
   };
 
   const timeAgo = (ts: number) => {
@@ -82,7 +82,7 @@ export default function NotificationCenter() {
 
   return (
     <div ref={ref} style={{ position: 'relative' }}>
-      <button onClick={() => setOpen(!open)} className="haptic" style={{
+      <button onClick={() => setOpen(!open)} className="haptic" aria-label="Notifications" style={{
         position: 'relative', background: 'none', border: 'none', cursor: 'pointer',
         padding: '6px 8px', color: 'var(--t2)', display: 'flex', alignItems: 'center',
       }}>
@@ -125,7 +125,7 @@ export default function NotificationCenter() {
                 <div key={n.id} onClick={() => {
                   setNotifications(prev => {
                     const next = prev.map(x => x.id === n.id ? { ...x, read: true } : x);
-                    localStorage.setItem('pa_notifications', JSON.stringify(next));
+                    try { localStorage.setItem('pa_notifications', JSON.stringify(next)); } catch {}
                     return next;
                   });
                 }} style={{

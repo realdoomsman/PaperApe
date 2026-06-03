@@ -44,7 +44,7 @@ export default function CalculatorPage() {
         <div style={{ fontSize: 12, color: 'var(--t2)', marginTop: 2 }}>Calculate optimal position sizes based on risk management</div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.5fr', gap: 16 }}>
+      <div className="calculator-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1.5fr', gap: 16 }}>
         {/* Input Panel */}
         <div className="card">
           <div className="card-head"><span className="card-title">Parameters</span></div>

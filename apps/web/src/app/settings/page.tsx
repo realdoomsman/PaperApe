@@ -91,7 +91,7 @@ export default function SettingsPage() {
             <h1 style={{ fontSize: 18, fontWeight: 700, color: 'var(--t0)', margin: 0 }}>Settings</h1>
             <div style={{ fontSize: 12, color: 'var(--t2)', marginTop: 2 }}>Customize your trading experience</div>
           </div>
-          {saved && <div style={{ padding: '4px 12px', background: 'rgba(0,255,136,0.08)', border: '1px solid rgba(0,255,136,0.15)', borderRadius: 8, fontSize: 11, fontWeight: 600, color: 'var(--green)', animation: 'fadeInUp 0.15s ease' }}>✓ Saved</div>}
+          {saved && <div style={{ padding: '4px 12px', background: 'rgba(0,255,136,0.08)', border: '1px solid rgba(0,255,136,0.15)', borderRadius: 8, fontSize: 11, fontWeight: 600, color: 'var(--green)', animation: 'fadeInUp 0.15s ease', display: 'flex', alignItems: 'center', gap: 4 }}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg> Saved</div>}
         </div>
 
         {/* Profile Card */}

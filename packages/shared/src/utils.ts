@@ -1,27 +1,7 @@
 import {
-  SLIPPAGE_MULTIPLIER,
-  MAX_SLIPPAGE_PERCENT,
-  MIN_SLIPPAGE_PERCENT,
   BASE_PRIORITY_FEE,
   PLATFORM_FEE,
 } from './constants.js';
-
-/**
- * Calculate simulated slippage percentage based on trade size vs pool liquidity.
- */
-export function calculateSlippage(tradeAmountUsd: number, liquidityUsd: number): number {
-  if (liquidityUsd <= 0) return MAX_SLIPPAGE_PERCENT;
-  const raw = (tradeAmountUsd / liquidityUsd) * SLIPPAGE_MULTIPLIER;
-  return Math.min(MAX_SLIPPAGE_PERCENT, Math.max(MIN_SLIPPAGE_PERCENT, raw));
-}
-
-/**
- * Apply slippage to a price (for buys: price goes up; for sells: price goes down).
- */
-export function applySlippage(price: number, slippagePercent: number, isBuy: boolean): number {
-  const factor = slippagePercent / 100;
-  return isBuy ? price * (1 + factor) : price * (1 - factor);
-}
 
 /**
  * Calculate total fees for a trade in SOL.
@@ -32,32 +12,30 @@ export function calculateFees(priorityFee = BASE_PRIORITY_FEE): number {
 
 /**
  * Calculate tokens received for a given SOL amount at a given price.
+ * Simple: (amountSol - fees) / pricePerToken
  */
 export function calculateTokensReceived(
   amountSol: number,
   pricePerTokenInSol: number,
-  slippagePercent: number,
   fees = calculateFees()
 ): number {
-  const effectivePrice = applySlippage(pricePerTokenInSol, slippagePercent, true);
-  if (effectivePrice <= 0) return 0;
+  if (pricePerTokenInSol <= 0) return 0;
   const netSol = amountSol - fees;
   if (netSol <= 0) return 0;
-  return netSol / effectivePrice;
+  return netSol / pricePerTokenInSol;
 }
 
 /**
  * Calculate SOL received when selling tokens.
+ * Simple: (tokens * price) - fees
  */
 export function calculateSolReceived(
   amountTokens: number,
   pricePerTokenInSol: number,
-  slippagePercent: number,
   fees = calculateFees()
 ): number {
-  const effectivePrice = applySlippage(pricePerTokenInSol, slippagePercent, false);
-  if (effectivePrice <= 0) return 0;
-  const grossSol = amountTokens * effectivePrice;
+  if (pricePerTokenInSol <= 0) return 0;
+  const grossSol = amountTokens * pricePerTokenInSol;
   return Math.max(0, grossSol - fees);
 }
 
@@ -116,17 +94,14 @@ export function generateId(): string {
 }
 
 /**
- * Calculate "Sell Init" — how many tokens equal the initial SOL investment at current price.
+ * Calculate "Sell Init" — how many tokens to sell to recover the initial SOL investment.
+ * tokens = (initialAmountSol + fees) / pricePerToken
  */
 export function calculateSellInitTokens(
   initialAmountSol: number,
   currentPricePerToken: number,
-  slippagePercent: number,
   fees = calculateFees()
 ): number {
-  const effectivePrice = applySlippage(currentPricePerToken, slippagePercent, false);
-  // We need: tokens * effectivePrice - fees = initialAmountSol
-  // tokens = (initialAmountSol + fees) / effectivePrice
-  if (effectivePrice <= 0) return 0;
-  return (initialAmountSol + fees) / effectivePrice;
+  if (currentPricePerToken <= 0) return 0;
+  return (initialAmountSol + fees) / currentPricePerToken;
 }

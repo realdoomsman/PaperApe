@@ -196,7 +196,7 @@ export default function HistoryPage() {
           ) : (
             <>
               <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr 0.8fr 1fr 0.8fr 0.4fr', padding: '8px 14px', borderBottom: '1px solid var(--border-0)', fontSize: 10, fontWeight: 600, color: 'var(--t3)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                <span>Token</span><span>Entry Price</span><span>Invested</span><span>PnL</span><span>Status</span><span></span>
+                <span>Token</span><span>Entry MCap</span><span>Invested</span><span>PnL</span><span>Status</span><span></span>
               </div>
               {filtered.map(pos => {
                 const pnl = parseFloat(String(pos.pnl_sol ?? 0));
@@ -212,7 +212,7 @@ export default function HistoryPage() {
                       )}
                       <div><div style={{ fontWeight: 700, color: 'var(--t0)' }}>{pos.token_symbol}</div><div style={{ fontSize: 10, color: 'var(--t2)' }}>{truncateAddress(pos.token_address)}</div></div>
                     </div>
-                    <span className="mono" style={{ color: 'var(--t1)' }}>{parseFloat(String(pos.entry_price ?? 0)) < 0.001 ? parseFloat(String(pos.entry_price ?? 0)).toExponential(2) : parseFloat(String(pos.entry_price ?? 0)).toFixed(6)}</span>
+                    <span className="mono" style={{ color: 'var(--t1)' }}>{(() => { const mc = parseFloat(String(pos.entry_market_cap_usd ?? (pos as any).market_cap_usd ?? 0)); return mc >= 1e9 ? `$${(mc/1e9).toFixed(2)}B` : mc >= 1e6 ? `$${(mc/1e6).toFixed(2)}M` : mc >= 1e3 ? `$${(mc/1e3).toFixed(1)}K` : mc > 0 ? `$${mc.toFixed(0)}` : '-'; })()}</span>
                     <span className="mono" style={{ color: 'var(--t1)' }}>{formatSol(parseFloat(String(pos.amount_sol)))} SOL</span>
                     <div>
                       <div className={`mono ${pnl >= 0 ? 'up' : 'down'}`} style={{ fontWeight: 600 }}>{pnl >= 0 ? '+' : ''}{pnl.toFixed(4)} SOL</div>

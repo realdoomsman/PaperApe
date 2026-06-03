@@ -37,11 +37,11 @@ function StatRow({ label, left, right, format = 'text', highlight }: { label: st
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: 8, padding: '8px 0', borderBottom: '1px dashed var(--border-0)', alignItems: 'center' }}>
       <div className="mono" style={{ fontSize: 12, textAlign: 'right', fontWeight: leftWins ? 700 : 400, color: leftWins ? 'var(--green)' : 'var(--t1)' }}>
-        {fmtVal(left)} {leftWins && '✓'}
+        {fmtVal(left)} {leftWins && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" style={{display:'inline',verticalAlign:'middle'}}><polyline points="20 6 9 17 4 12"/></svg>}
       </div>
       <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--t3)', textAlign: 'center', minWidth: 80, textTransform: 'uppercase', letterSpacing: 0.5 }}>{label}</div>
       <div className="mono" style={{ fontSize: 12, textAlign: 'left', fontWeight: rightWins ? 700 : 400, color: rightWins ? 'var(--green)' : 'var(--t1)' }}>
-        {rightWins && '✓ '}{fmtVal(right)}
+        {rightWins && <><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" style={{display:'inline',verticalAlign:'middle'}}><polyline points="20 6 9 17 4 12"/></svg> </>}{fmtVal(right)}
       </div>
     </div>
   );
@@ -171,7 +171,7 @@ export default function ComparePage() {
       </div>
 
       {/* Search Inputs */}
-      <div style={{ display: 'flex', gap: 16, marginBottom: 20, alignItems: 'flex-start' }}>
+      <div className="compare-inputs" style={{ display: 'flex', gap: 16, marginBottom: 20, alignItems: 'flex-start' }}>
         <TokenInput side="A" search={searchA} setSearch={setSearchA} results={resultsA} loading={loadingA} token={tokenA} error={errorA} />
         <div style={{ paddingTop: 12, fontSize: 16, fontWeight: 800, color: 'var(--t3)' }}>VS</div>
         <TokenInput side="B" search={searchB} setSearch={setSearchB} results={resultsB} loading={loadingB} token={tokenB} error={errorB} />

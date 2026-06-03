@@ -5,6 +5,8 @@ import { executeBuy } from './tradeEngine.js';
 const dcaOrders: Map<string, DCAOrder> = new Map();
 let tickInterval: ReturnType<typeof setInterval> | null = null;
 const DCA_TICK_MS = 10_000; // Check every 10 seconds
+const dcaFailureCount = new Map<string, number>(); // Track consecutive failures per order
+const DCA_MAX_CONSECUTIVE_FAILURES = 3;
 
 export interface DCAOrder {
   id: string;
@@ -15,7 +17,6 @@ export interface DCAOrder {
   interval: string;             // '1m' | '5m' | '15m' | '1h' | '4h' | '1d'
   total_buys: number;           // max number of buys
   completed_buys: number;
-  slippage: number;
   status: 'active' | 'paused' | 'completed' | 'cancelled';
   next_buy_at: number;          // timestamp ms
   created_at: string;
@@ -44,7 +45,6 @@ export async function createDCAOrder(
   amountPerBuy: number,
   interval: string,
   totalBuys: number,
-  slippage: number = 15,
 ): Promise<DCAOrder> {
   if (!INTERVAL_MS[interval]) {
     throw new Error(`Invalid interval. Use: ${Object.keys(INTERVAL_MS).join(', ')}`);
@@ -65,7 +65,6 @@ export async function createDCAOrder(
     interval,
     total_buys: totalBuys,
     completed_buys: 0,
-    slippage,
     status: 'active',
     next_buy_at: Date.now() + INTERVAL_MS[interval],
     created_at: new Date().toISOString(),
@@ -184,7 +183,6 @@ async function dcaTick() {
         await executeBuy(userId, {
           token_address: order.token_address,
           amount_sol: order.amount_per_buy,
-          slippage_tolerance: order.slippage,
         });
 
         const updates = {
@@ -199,13 +197,30 @@ async function dcaTick() {
         } else {
           await order._ref.update(updates);
         }
+        // Reset failure counter on success
+        dcaFailureCount.delete(order.id);
       } catch (err: any) {
         console.error(`DCA buy failed for order ${order.id}:`, err.message);
-        // Don't cancel — retry on next tick
-        if (isMockMode) {
-          order.next_buy_at = now + INTERVAL_MS[order.interval];
+        const failures = (dcaFailureCount.get(order.id) ?? 0) + 1;
+        dcaFailureCount.set(order.id, failures);
+
+        if (failures >= DCA_MAX_CONSECUTIVE_FAILURES) {
+          console.warn(`⚠️ DCA order ${order.id} auto-paused after ${failures} consecutive failures`);
+          if (isMockMode) {
+            order.status = 'paused';
+          } else {
+            await order._ref.update({ status: 'paused' });
+          }
+          dcaFailureCount.delete(order.id);
         } else {
-          await order._ref.update({ next_buy_at: now + INTERVAL_MS[order.interval] });
+          // Retry on next tick
+          if (isMockMode) {
+            order.next_buy_at = now + INTERVAL_MS[order.interval];
+          } else {
+            await order._ref.update({
+              next_buy_at: now + INTERVAL_MS[order.interval],
+            });
+          }
         }
       }
     }

@@ -1,13 +1,7 @@
 import type { CSSProperties, ReactNode } from 'react';
-import type { Metadata } from 'next';
 import Link from 'next/link';
 import AppShell from '@/components/AppShell';
 import { IconCheck, IconShield } from '@/components/Icons';
-
-export const metadata: Metadata = {
-  title: 'Privacy Policy - PaperApe',
-  description: 'How PaperApe collects, uses, and protects data for the simulated paper trading website and Chrome extension.',
-};
 
 const sectionTitle: CSSProperties = {
   fontSize: 14,

@@ -1,6 +1,7 @@
 'use client';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import dynamic from 'next/dynamic';
 import AppShell from '@/components/AppShell';
 import OnboardingGuide from '@/components/OnboardingGuide';
@@ -174,7 +175,7 @@ export default function DashboardPage() {
   const displayName = user?.displayName || user?.email?.split('@')[0] || 'explorer';
 
   // Calculate trading streak from SELL trades only (buys don't have PnL)
-  const streak = (() => {
+  const streak = useMemo(() => {
     if (sellTrades.length === 0) return 0;
     let count = 0;
     const sorted = [...sellTrades].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
@@ -187,33 +188,31 @@ export default function DashboardPage() {
       } else break;
     }
     return count;
-  })();
+  }, [sellTrades]);
 
   // Build equity curve: track balance changes from all trades
-  const equityCurve = (() => {
+  const equityCurve = useMemo(() => {
     const curve = [100]; // starting balance
     const sorted = [...trades].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
     let running = 100;
     for (const t of sorted) {
       if (t.trade_type === 'buy') {
-        // Buy: spent SOL
         running -= parseFloat(String(t.amount_sol ?? 0));
       } else {
-        // Sell/sell_init: received SOL
         running += parseFloat(String(t.amount_sol ?? 0));
       }
       curve.push(Math.max(0, running));
     }
     if (curve.length === 1) curve.push(displayBalance);
     return curve;
-  })();
+  }, [trades, displayBalance]);
 
   // Best/worst trade: only from sell trades
   const bestTrade = sellTrades.length > 0 ? Math.max(...sellTrades.map((t: any) => parseFloat(String(t.realized_pnl_sol ?? 0)))) : 0;
   const worstTrade = sellTrades.length > 0 ? Math.min(...sellTrades.map((t: any) => parseFloat(String(t.realized_pnl_sol ?? 0)))) : 0;
 
   // Avg hold time: calculate from buy→sell pairs
-  const avgHoldTime = (() => {
+  const avgHoldTime = useMemo(() => {
     if (sellTrades.length === 0) return '-';
     const buyTrades = trades.filter((t: any) => t.trade_type === 'buy');
     const holdTimes: number[] = [];
@@ -233,7 +232,7 @@ export default function DashboardPage() {
     const avgHr = avgMin / 60;
     if (avgHr < 24) return `${avgHr.toFixed(1)}h`;
     return `${(avgHr / 24).toFixed(1)}d`;
-  })();
+  }, [sellTrades, trades]);
 
   const allLessons = getAllLessons();
   const academyPct = allLessons.length > 0 ? Math.round((completedLessons.size / allLessons.length) * 100) : 0;

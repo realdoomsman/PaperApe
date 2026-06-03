@@ -77,6 +77,7 @@ export default function PaperChart({ pairAddress, tokenAddress, height = 400 }: 
         title="DexScreener Chart"
         allow="clipboard-write"
         loading="lazy"
+        sandbox="allow-scripts allow-same-origin"
       />
     </div>
   );

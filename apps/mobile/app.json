@@ -1,0 +1,39 @@
+{
+  "expo": {
+    "name": "PaperApe",
+    "slug": "paperape",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "scheme": "paperape",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#d4c8a8"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "fun.paperape.app",
+      "buildNumber": "1"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#d4c8a8"
+      },
+      "package": "fun.paperape.app",
+      "versionCode": 1
+    },
+    "plugins": [
+      "expo-splash-screen"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "c1852cd7-22e9-44c2-abda-7c29c517f476"
+      }
+    },
+    "owner": "doomsalt"
+  }
+}

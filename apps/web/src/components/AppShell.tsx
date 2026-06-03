@@ -1,11 +1,12 @@
 'use client';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useMode } from '@/components/ModeContext';
 import { useAuth } from '@/components/AuthContext';
 import { IconLogo, IconChart, IconTarget, IconUsers, IconWallet, IconGraduationCap, IconActivity, IconTrophy, IconChevronRight, IconExtension } from '@/components/Icons';
 import NotificationCenter from '@/components/NotificationCenter';
+import InstallBanner from '@/components/InstallBanner';
 
 interface AppShellProps { children: React.ReactNode; balance?: number; }
 
@@ -32,12 +33,20 @@ export default function AppShell({ children, balance }: AppShellProps) {
   const pathname = usePathname();
   const { mode, setMode } = useMode();
   const { user, logout, emailVerified, serverBalance } = useAuth();
-  const [scrolled, setScrolled] = useState(false);
+  const navRef = useRef<HTMLElement>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
+  // Use ref + direct DOM mutation to avoid re-rendering entire tree on scroll
   useEffect(() => {
-    const fn = () => setScrolled(window.scrollY > 8);
+    let scrolled = false;
+    const fn = () => {
+      const isScrolled = window.scrollY > 8;
+      if (isScrolled !== scrolled) {
+        scrolled = isScrolled;
+        navRef.current?.classList.toggle('scrolled', scrolled);
+      }
+    };
     window.addEventListener('scroll', fn, { passive: true });
     return () => window.removeEventListener('scroll', fn);
   }, []);
@@ -64,7 +73,7 @@ export default function AppShell({ children, balance }: AppShellProps) {
       </div>
 
       {/* Floating top nav */}
-      <nav className={`topnav ${scrolled ? 'scrolled' : ''}`}>
+      <nav ref={navRef} className="topnav">
         <Link href="/dashboard" className="nav-brand">
           <img src="/logo.png" alt="PaperApe" className="nav-logo" style={{ width: 28, height: 28, borderRadius: 6 }} />
           <span className="nav-name">PaperApe</span>
@@ -82,7 +91,7 @@ export default function AppShell({ children, balance }: AppShellProps) {
         </div>
 
         {/* Cmd+K hint */}
-        <button onClick={() => { window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true })); }} className="haptic" style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 10px', background: 'var(--bg-2)', border: '1px solid var(--border-0)', borderRadius: 6, cursor: 'pointer', fontSize: 9, color: 'var(--t3)', marginRight: 8 }} title="Command Palette (⌘K)">
+        <button onClick={() => { window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true })); }} className="haptic" style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 10px', background: 'var(--bg-2)', border: '1px solid var(--border-0)', borderRadius: 6, cursor: 'pointer', fontSize: 9, color: 'var(--t3)', marginRight: 8 }} title="Command Palette (⌘K)" aria-label="Open command palette">
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
           <kbd style={{ fontFamily: 'inherit', fontSize: 9 }}>⌘K</kbd>
         </button>
@@ -105,7 +114,7 @@ export default function AppShell({ children, balance }: AppShellProps) {
           </div>
 
           {isAuthed ? (
-            <button className="nav-avatar" onClick={() => setMenuOpen(!menuOpen)}>
+            <button className="nav-avatar" onClick={() => setMenuOpen(!menuOpen)} aria-label="User menu">
               {initials}
             </button>
           ) : (
@@ -191,6 +200,7 @@ export default function AppShell({ children, balance }: AppShellProps) {
             );
           })}
         </div>
+        <InstallBanner />
       </div>
     </div>
   );

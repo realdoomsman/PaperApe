@@ -198,7 +198,8 @@ walletsRouter.post('/transfer', async (req: any, res) => {
     const userId = req.user.id;
     const { fromId, toId, amount } = req.body;
 
-    if (!fromId || !toId || !amount || amount <= 0) {
+    const parsedAmount = typeof amount === 'number' ? amount : parseFloat(amount);
+    if (!fromId || !toId || isNaN(parsedAmount) || parsedAmount <= 0) {
       return res.status(400).json({ success: false, error: 'Invalid transfer: fromId, toId, amount required' });
     }
     if (fromId === toId) {
@@ -212,12 +213,12 @@ walletsRouter.post('/transfer', async (req: any, res) => {
       const from = wallets.find(w => w.id === fromId);
       const to = wallets.find(w => w.id === toId);
       if (!from || !to) return res.status(404).json({ success: false, error: 'Wallet not found' });
-      if (from.balance < amount) return res.status(400).json({ success: false, error: `Insufficient balance. Have ${from.balance.toFixed(4)} SOL.` });
+      if (from.balance < parsedAmount) return res.status(400).json({ success: false, error: `Insufficient balance. Have ${from.balance.toFixed(4)} SOL.` });
 
-      from.balance -= amount;
-      to.balance += amount;
+      from.balance -= parsedAmount;
+      to.balance += parsedAmount;
 
-      return res.json({ success: true, data: { from, to, amount_transferred: amount } });
+      return res.json({ success: true, data: { from, to, amount_transferred: parsedAmount } });
     }
 
     // Firestore — atomic transfer using transaction
@@ -225,7 +226,11 @@ walletsRouter.post('/transfer', async (req: any, res) => {
     const toRef = db.collection('users').doc(userId).collection('wallets').doc(toId);
 
     const result = await db.runTransaction(async (txn) => {
-      const [fromSnap, toSnap] = await Promise.all([txn.get(fromRef), txn.get(toRef)]);
+      // ── ALL READS FIRST ─────────────────────────────────
+      const fromSnap = await txn.get(fromRef);
+      const toSnap = await txn.get(toRef);
+
+      // ── VALIDATE ─────────────────────────────────────────
       if (!fromSnap.exists || !toSnap.exists) {
         throw new Error('Wallet not found');
       }
@@ -235,17 +240,18 @@ walletsRouter.post('/transfer', async (req: any, res) => {
       const fromBalance = fromData.balance ?? 0;
       const toBalance = toData.balance ?? 0;
 
-      if (fromBalance < amount) {
+      if (fromBalance < parsedAmount) {
         throw new Error(`Insufficient balance. Have ${fromBalance.toFixed(4)} SOL.`);
       }
 
-      txn.update(fromRef, { balance: fromBalance - amount });
-      txn.update(toRef, { balance: toBalance + amount });
+      // ── ALL WRITES ───────────────────────────────────────
+      txn.update(fromRef, { balance: fromBalance - parsedAmount });
+      txn.update(toRef, { balance: toBalance + parsedAmount });
 
       return {
-        from: { id: fromId, ...fromData, balance: fromBalance - amount },
-        to: { id: toId, ...toData, balance: toBalance + amount },
-        amount_transferred: amount,
+        from: { id: fromId, ...fromData, balance: fromBalance - parsedAmount },
+        to: { id: toId, ...toData, balance: toBalance + parsedAmount },
+        amount_transferred: parsedAmount,
       };
     });
 

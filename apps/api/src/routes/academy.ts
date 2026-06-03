@@ -70,44 +70,47 @@ academyRouter.post('/claim-reward', async (req, res) => {
       });
     }
 
-    // Firestore mode
+    // Firestore mode — use transaction for atomic check + update
     const userRef = db.collection('users').doc(user.id);
-    const userDoc = await userRef.get();
+    const result = await db.runTransaction(async (txn) => {
+      const userDoc = await txn.get(userRef);
+      if (!userDoc.exists) {
+        throw new Error('User not found');
+      }
+      const userData = userDoc.data()!;
+      const completedLessons: string[] = userData.completed_lessons ?? [];
 
-    if (!userDoc.exists) {
-      return res.status(404).json({ success: false, error: 'User not found' });
-    }
+      if (completedLessons.includes(lesson_id)) {
+        return { already_claimed: true, reward: 0, completed_lessons: completedLessons };
+      }
 
-    const userData = userDoc.data()!;
-    const completedLessons: string[] = userData.completed_lessons ?? [];
+      const newBalance = (userData.paper_balance ?? 100) + reward;
+      const newCompleted = [...completedLessons, lesson_id];
 
-    if (completedLessons.includes(lesson_id)) {
-      return res.json({ success: true, data: { already_claimed: true, reward: 0, completed_lessons: completedLessons } });
-    }
+      txn.update(userRef, {
+        completed_lessons: newCompleted,
+        paper_balance: newBalance,
+      });
 
-    // Update user: add lesson to completed + add reward to balance
-    const newBalance = (userData.paper_balance ?? 100) + reward;
-    const newCompleted = [...completedLessons, lesson_id];
-
-    await userRef.update({
-      completed_lessons: newCompleted,
-      paper_balance: newBalance,
+      return {
+        already_claimed: false,
+        reward,
+        new_balance: newBalance,
+        completed_lessons: newCompleted,
+      };
     });
+
+    if (result.already_claimed) {
+      return res.json({ success: true, data: result });
+    }
+
     try {
       await applyPrimaryWalletBalanceDelta(user.id, reward);
     } catch (walletErr) {
       console.warn('Wallet balance sync failed after academy reward:', walletErr);
     }
 
-    res.json({
-      success: true,
-      data: {
-        already_claimed: false,
-        reward,
-        new_balance: newBalance,
-        completed_lessons: newCompleted,
-      },
-    });
+    res.json({ success: true, data: result });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
   }

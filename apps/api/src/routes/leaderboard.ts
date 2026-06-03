@@ -148,8 +148,17 @@ leaderboardRouter.get('/alltime', async (_req, res) => {
 });
 
 // ─── POST /leaderboard/refresh ──────────────────────────
+let lastRefreshTime = 0;
+const REFRESH_COOLDOWN = 15_000; // 15 seconds
+
 leaderboardRouter.post('/refresh', async (_req, res) => {
   try {
+    const now = Date.now();
+    if (now - lastRefreshTime < REFRESH_COOLDOWN) {
+      return res.status(429).json({ success: false, error: 'Refresh rate limited. Try again in a few seconds.' });
+    }
+    lastRefreshTime = now;
+    // Clear cache AFTER we know we'll re-aggregate
     lbCacheMap.clear();
     const rankings = await aggregateLeaderboard();
     res.json({ success: true, data: { rankings, message: 'Leaderboard refreshed' } });

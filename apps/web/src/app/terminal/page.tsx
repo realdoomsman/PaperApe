@@ -2,7 +2,8 @@
 import { useState, useEffect, useCallback, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import AppShell from '@/components/AppShell';
-import PaperChart from '@/components/PaperChart';
+import dynamic from 'next/dynamic';
+const PaperChart = dynamic(() => import('@/components/PaperChart'), { ssr: false, loading: () => <div style={{ height: 400, background: 'var(--bg-1)', borderRadius: 12, border: '1px solid var(--border-0)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--t3)', fontSize: 12 }}>Loading chart...</div> });
 import { useAuth } from '@/components/AuthContext';
 import { useLoginHref } from '@/components/AuthGate';
 import { useMode } from '@/components/ModeContext';
@@ -20,6 +21,7 @@ interface Position {
   image: string | null;
   entryPrice: number;     // price per token in SOL at entry
   entryPriceUsd: number;  // USD price at entry
+  entryMarketCap: number; // market cap in USD at entry
   amount: number;         // SOL invested (remaining cost basis)
   tokens: number;         // tokens held
   currentPrice: number;   // current price in SOL
@@ -352,6 +354,7 @@ function TerminalInner() {
             image: p.token_image || null,
             entryPrice,
             entryPriceUsd: parseFloat(p.entry_price_usd) || 0,
+            entryMarketCap: parseFloat(p.entry_market_cap_usd) || 0,
             amount: amountSol,
             tokens,
             currentPrice,
@@ -389,6 +392,7 @@ function TerminalInner() {
           image: p.token_image || null,
           entryPrice,
           entryPriceUsd: parseFloat(p.entry_price_usd) || 0,
+          entryMarketCap: parseFloat(p.entry_market_cap_usd) || 0,
           amount: amountSol,
           tokens,
           currentPrice,
@@ -537,6 +541,7 @@ function TerminalInner() {
         const tokensHeld = parseFloat(apiPos.tokens_remaining) || 0;
         const currentPriceSol = parseFloat(apiPos.current_price) || displayPriceSol;
         const entryPriceUsd = parseFloat(apiPos.entry_price_usd) || Number(apiTrade?.price_usd) || displayPrice;
+        const entryMarketCap = parseFloat(apiPos.entry_market_cap_usd) || displayMcap;
         const currentPriceUsd = parseFloat(apiPos.current_price_usd) || Number(apiTrade?.price_usd) || displayPrice;
         const currentVal = tokensHeld * currentPriceSol;
         const realizedPnl = parseFloat(String(apiPos.realized_pnl_sol ?? 0));
@@ -550,6 +555,7 @@ function TerminalInner() {
           image: apiPos.token_image || liveData?.image || null,
           entryPrice: parseFloat(apiPos.entry_price) || displayPriceSol,
           entryPriceUsd,
+          entryMarketCap,
           amount: investedSol,
           tokens: tokensHeld,
           currentPrice: currentPriceSol,
@@ -763,7 +769,7 @@ function TerminalInner() {
                     </span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, color: 'var(--t3)' }}>
-                    <span>Entry: {p.entryPriceUsd > 0 ? `$${p.entryPriceUsd < 0.01 ? p.entryPriceUsd.toExponential(1) : p.entryPriceUsd.toFixed(4)}` : `${p.entryPrice.toFixed(6)} SOL`}</span>
+                    <span>Entry MCap: {fmtMcap(p.entryMarketCap)}</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, color: 'var(--t3)', marginTop: 2 }}>
                     <span className="mono">{p.amount.toFixed(2)} SOL in</span>
@@ -922,17 +928,20 @@ function TerminalInner() {
                 )}
                 {(liveData as any).socials.twitter && (
                   <a href={(liveData as any).socials.twitter} target="_blank" rel="noopener noreferrer" className="btn haptic" style={{ fontSize: 9, padding: '3px 10px', gap: 3 }}>
-                    𝕏 Twitter
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+                    Twitter
                   </a>
                 )}
                 {(liveData as any).socials.telegram && (
                   <a href={(liveData as any).socials.telegram} target="_blank" rel="noopener noreferrer" className="btn haptic" style={{ fontSize: 9, padding: '3px 10px', gap: 3 }}>
-                    ✈ Telegram
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+                    Telegram
                   </a>
                 )}
                 {(liveData as any).socials.discord && (
                   <a href={(liveData as any).socials.discord} target="_blank" rel="noopener noreferrer" className="btn haptic" style={{ fontSize: 9, padding: '3px 10px', gap: 3 }}>
-                    💬 Discord
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+                    Discord
                   </a>
                 )}
               </div>
@@ -1115,8 +1124,8 @@ function TerminalInner() {
                     <div style={{ padding: '14px', background: curPos.pnlPercent >= 0 ? 'var(--green-bg)' : 'var(--red-bg)', border: `2px dashed ${curPos.pnlPercent >= 0 ? 'var(--green)' : 'var(--red)'}`, borderRadius: 4 }}>
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                         <div>
-                          <div style={{ fontSize: 9, color: 'var(--t3)', textTransform: 'uppercase', letterSpacing: 1 }}>Entry</div>
-                          <div className="mono" style={{ fontSize: 11, color: 'var(--t1)' }}>{curPos.entryPrice.toFixed(8)} SOL</div>
+                          <div style={{ fontSize: 9, color: 'var(--t3)', textTransform: 'uppercase', letterSpacing: 1 }}>Entry MCap</div>
+                          <div className="mono" style={{ fontSize: 11, color: 'var(--t1)' }}>{fmtMcap(curPos.entryMarketCap)}</div>
                         </div>
                         <div>
                           <div style={{ fontSize: 9, color: 'var(--t3)', textTransform: 'uppercase', letterSpacing: 1 }}>Current</div>
@@ -1174,8 +1183,8 @@ function TerminalInner() {
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, fontSize: 10 }}>
                     <div>
-                      <div style={{ color: 'var(--t3)', fontSize: 9, textTransform: 'uppercase', letterSpacing: 0.5 }}>Entry</div>
-                      <div className="mono" style={{ color: 'var(--t1)', fontWeight: 600 }}>${curPos.entryPriceUsd < 0.01 ? curPos.entryPriceUsd.toExponential(2) : curPos.entryPriceUsd.toFixed(4)}</div>
+                      <div style={{ color: 'var(--t3)', fontSize: 9, textTransform: 'uppercase', letterSpacing: 0.5 }}>Entry MCap</div>
+                      <div className="mono" style={{ color: 'var(--t1)', fontWeight: 600 }}>{fmtMcap(curPos.entryMarketCap)}</div>
                     </div>
                     <div>
                       <div style={{ color: 'var(--t3)', fontSize: 9, textTransform: 'uppercase', letterSpacing: 0.5 }}>MCap</div>
@@ -1378,7 +1387,7 @@ function TerminalInner() {
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                               <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--t0)' }}>{order.tokenSymbol}</span>
                               <span className="mono" style={{ fontSize: 10, color: order.status === 'active' ? 'var(--green)' : 'var(--gold)', fontWeight: 600 }}>
-                                {order.status === 'active' ? '● Active' : order.status === 'paused' ? '⏸ Paused' : '✓ Complete'}
+                                {order.status === 'active' ? <><svg width="8" height="8" viewBox="0 0 24 24" fill="var(--green)" stroke="none"><circle cx="12" cy="12" r="10"/></svg> Active</> : order.status === 'paused' ? <><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg> Paused</> : <><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg> Complete</>}
                               </span>
                             </div>
                             {/* Progress bar */}
@@ -1400,7 +1409,7 @@ function TerminalInner() {
                                     if (r2.success && r2.data?.orders) setDcaOrders(r2.data.orders.map(toUiDCAOrder));
                                     showToast(order.status === 'active' ? 'DCA paused' : 'DCA resumed', 'buy');
                                   }}>
-                                  {order.status === 'active' ? '⏸ Pause' : '▶ Resume'}
+                                  {order.status === 'active' ? <><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg> Pause</> : <><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="5 3 19 12 5 21 5 3"/></svg> Resume</>}
                                 </button>
                                 <button className="preset haptic" disabled={!isAuthed} style={{ flex: 1, fontSize: 9, color: 'var(--red)' }}
                                   onClick={async () => {
@@ -1410,7 +1419,7 @@ function TerminalInner() {
                                     if (r2.success && r2.data?.orders) setDcaOrders(r2.data.orders.map(toUiDCAOrder));
                                     showToast('DCA cancelled', 'sell');
                                   }}>
-                                  ✕ Cancel
+                                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> Cancel
                                 </button>
                               </div>
                             )}
@@ -1455,7 +1464,7 @@ function TerminalInner() {
                     <span className={`mono ${p.pnl >= 0 ? 'up' : 'down'}`}>{p.pnl >= 0 ? '+' : ''}{p.pnl.toFixed(3)}</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, marginTop: 2 }}>
-                    <span className="mono" style={{ color: 'var(--t3)' }}>Entry: ${p.entryPriceUsd < 0.01 ? p.entryPriceUsd.toExponential(1) : p.entryPriceUsd.toFixed(4)}</span>
+                    <span className="mono" style={{ color: 'var(--t3)' }}>Entry MCap: {fmtMcap(p.entryMarketCap)}</span>
                     <span className="mono" style={{ color: 'var(--t3)' }}>Now: ${p.currentPriceUsd < 0.01 ? p.currentPriceUsd.toExponential(1) : p.currentPriceUsd.toFixed(4)}</span>
                     <span className="mono" style={{ color: 'var(--t3)' }}>{p.tokens.toLocaleString(undefined, { maximumFractionDigits: 0 })} tkns</span>
                   </div>

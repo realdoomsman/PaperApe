@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { authenticateRequest, verifyFirebaseToken, upsertUser } from '../services/auth.js';
+import { authenticateRequest, verifyFirebaseToken, upsertUser, fundUser } from '../services/auth.js';
 import { applyPrimaryWalletBalanceDelta } from './wallets.js';
 
 export const authRouter = Router();
@@ -25,7 +25,7 @@ authRouter.post('/verify', async (req, res) => {
     res.json({ success: true, data: { user } });
   } catch (err: any) {
     console.error('Auth error:', err);
-    res.status(500).json({ success: false, error: err.message });
+    res.status(500).json({ success: false, error: 'Internal server error' });
   }
 });
 
@@ -81,7 +81,7 @@ authRouter.post('/fund', async (req, res) => {
       dailyFundTracker.set(user.id, { total: amount, resetAt: now + 24 * 60 * 60 * 1000 });
     }
 
-    const { fundUser } = await import('../services/auth.js');
+    // fundUser is statically imported at the top
     const updated = await fundUser(user.id, amount);
     try {
       await applyPrimaryWalletBalanceDelta(user.id, amount);
@@ -90,6 +90,6 @@ authRouter.post('/fund', async (req, res) => {
     }
     res.json({ success: true, data: { user: updated, amount_added: amount } });
   } catch (err: any) {
-    res.status(500).json({ success: false, error: err.message });
+    res.status(500).json({ success: false, error: 'Internal server error' });
   }
 });

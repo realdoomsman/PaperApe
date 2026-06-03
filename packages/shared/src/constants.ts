@@ -4,17 +4,11 @@ import type { PlatformConfig } from './types.js';
 export const DEFAULT_PAPER_BALANCE = 100; // SOL
 export const BASE_PRIORITY_FEE = 0.005;   // SOL (simulated Solana priority fee)
 export const PLATFORM_FEE = 0.001;        // SOL (PaperApe platform fee sim)
-export const DEFAULT_SLIPPAGE_TOLERANCE = 15; // percent
 export const SOL_DECIMALS = 9;
 export const LAMPORTS_PER_SOL = 1_000_000_000;
+export const MAX_SUPPLY_PERCENT = 4;      // Max % of token supply a user can hold
 
-// ─── Slippage Curve ─────────────────────────────────────
-// Slippage increases as trade size grows relative to pool liquidity.
-// Formula: slippage% = (tradeAmountUsd / liquidityUsd) * SLIPPAGE_MULTIPLIER
-// Capped at MAX_SLIPPAGE_PERCENT.
-export const SLIPPAGE_MULTIPLIER = 200;
-export const MAX_SLIPPAGE_PERCENT = 49;
-export const MIN_SLIPPAGE_PERCENT = 0.1;
+
 
 // ─── Quick Buy Amounts (SOL) ────────────────────────────
 export const QUICK_BUY_AMOUNTS = [0.5, 1, 2, 5, 10] as const;

@@ -228,7 +228,7 @@ export default function WalletsPage() {
           <button key={t} className={`preset haptic ${mainTab === t ? 'on' : ''}`}
             onClick={() => setMainTab(t)}
             style={{ flex: 1, padding: '10px 0', fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>
-            {t === 'wallets' ? '💼 My Wallets' : '🐋 Smart Money'}
+            {t === 'wallets' ? <><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{display:'inline',verticalAlign:'middle',marginRight:4}}><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg>My Wallets</> : <><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{display:'inline',verticalAlign:'middle',marginRight:4}}><path d="M2 6c.6.5 1.2 1 2.5 1C6 7 6 5 8 5s2 2 3.5 2 1.5-2 3.5-2 2 2 3.5 2 1.5-2 2.5-2"/><path d="M2 12c.6.5 1.2 1 2.5 1 1.5 0 1.5-2 3.5-2s2 2 3.5 2 1.5-2 3.5-2 2 2 3.5 2 1.5-2 2.5-2"/><path d="M2 18c.6.5 1.2 1 2.5 1 1.5 0 1.5-2 3.5-2s2 2 3.5 2 1.5-2 3.5-2 2 2 3.5 2 1.5-2 2.5-2"/></svg>Smart Money</>}
           </button>
         ))}
       </div>
@@ -394,9 +394,9 @@ export default function WalletsPage() {
                         </div>
                         <div style={{ display: 'flex', gap: 4 }}>
                           <button onClick={e => { e.stopPropagation(); copy(tw.address); }} className="btn haptic" style={{ padding: '3px 8px', fontSize: 9 }}>
-                            {copied === tw.address ? '✓' : 'Copy'}
+                            {copied === tw.address ? <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--green)" strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg> : 'Copy'}
                           </button>
-                          <button onClick={e => { e.stopPropagation(); removeTrack(tw.address); }} className="btn danger haptic" style={{ padding: '3px 8px', fontSize: 9 }}>✕</button>
+                          <button onClick={e => { e.stopPropagation(); removeTrack(tw.address); }} className="btn danger haptic" style={{ padding: '3px 8px', fontSize: 9 }}><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
                         </div>
                       </div>
                     </div>

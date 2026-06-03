@@ -75,7 +75,6 @@ describe('trade engine accounting', () => {
     const result = await settleTrade(executeBuy(USER_ID, {
       token_address: TOKEN_ADDRESS,
       amount_sol: 1,
-      slippage_tolerance: 1,
     }));
 
     expect(mockUsers.get(USER_ID).paper_balance).toBeCloseTo(99);
@@ -91,7 +90,6 @@ describe('trade engine accounting', () => {
     const buy = await settleTrade(executeBuy(USER_ID, {
       token_address: TOKEN_ADDRESS,
       amount_sol: 1,
-      slippage_tolerance: 1,
     }));
     const originalTokens = buy.position.tokens_remaining;
 
@@ -120,13 +118,11 @@ describe('trade engine accounting', () => {
     const first = await settleTrade(executeBuy(USER_ID, {
       token_address: TOKEN_ADDRESS,
       amount_sol: 1,
-      slippage_tolerance: 1,
     }));
 
     const second = await settleTrade(executeBuy(USER_ID, {
       token_address: TOKEN_ADDRESS,
       amount_sol: 2,
-      slippage_tolerance: 1,
     }));
 
     const positions = mockPositions.get(USER_ID) ?? [];
@@ -146,7 +142,6 @@ describe('trade engine accounting', () => {
     const buy = await settleTrade(executeBuy(USER_ID, {
       token_address: TOKEN_ADDRESS,
       amount_sol: 1,
-      slippage_tolerance: 1,
     }));
 
     const sell = await executeSell(USER_ID, {
@@ -161,7 +156,7 @@ describe('trade engine accounting', () => {
     expect(mockUsers.get(USER_ID).paper_balance).toBeCloseTo(99 + sell.solReceived);
   });
 
-  it('executes paper buys without modeled slippage even on thin liquidity', async () => {
+  it('executes paper buys with only flat fees, no slippage', async () => {
     vi.mocked(getTokenPrice).mockResolvedValue({
       priceUsd: 1,
       priceSol: 0.01,
@@ -171,10 +166,8 @@ describe('trade engine accounting', () => {
     const trade = await settleTrade(executeBuy(USER_ID, {
       token_address: TOKEN_ADDRESS,
       amount_sol: 1,
-      slippage_tolerance: 1,
     }));
 
-    expect(trade.trade.slippage_applied).toBe(0);
     expect(trade.position.tokens_remaining).toBeCloseTo((1 - calculateFees()) / 0.01);
     expect(trade.position.pnl_sol).toBeCloseTo(-calculateFees());
     expect(mockUsers.get(USER_ID).paper_balance).toBeCloseTo(99);
@@ -185,7 +178,6 @@ describe('trade engine accounting', () => {
     const buy = await settleTrade(executeBuy(USER_ID, {
       token_address: TOKEN_ADDRESS,
       amount_sol: 1,
-      slippage_tolerance: 1,
     }));
 
     const closed = await resetUserOpenPositions(USER_ID);

@@ -2,10 +2,11 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { IconLogo, IconChevronRight, IconZap, IconShield, IconChart, IconTarget, IconUsers, IconDownload, IconShare, IconActivity } from '@/components/Icons';
+import { getAllLessons } from '@/lib/curriculum';
 
 export default function HomePage() {
   const [ready, setReady] = useState(false);
-  useEffect(() => { const t = setTimeout(() => setReady(true), 900); return () => clearTimeout(t); }, []);
+  useEffect(() => { setReady(true); }, []);
 
   return (
     <>
@@ -47,7 +48,7 @@ export default function HomePage() {
           </div>
           <div className="hero-stats an an4">
             <div className="hero-stat"><div className="hero-stat-v">100</div><div className="hero-stat-l">Starting SOL</div></div>
-            <div className="hero-stat"><div className="hero-stat-v">50+</div><div className="hero-stat-l">Lessons</div></div>
+            <div className="hero-stat"><div className="hero-stat-v">{getAllLessons().length}</div><div className="hero-stat-l">Lessons</div></div>
             <div className="hero-stat"><div className="hero-stat-v">&lt;2s</div><div className="hero-stat-l">Price Sync</div></div>
             <div className="hero-stat"><div className="hero-stat-v">$0</div><div className="hero-stat-l">Real Risk</div></div>
           </div>

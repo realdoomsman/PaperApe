@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Special+Elite&family=Courier+Prime:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Special+Elite&family=Courier+Prime:wght@400;700&display=swap&text=ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+-.$%,/:');
 
 :root {
   --bg-0: #d4c8a8;
@@ -50,7 +50,7 @@
 }
 
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
-html{scroll-behavior:smooth;}
+html{scroll-behavior:smooth;text-rendering:optimizeSpeed;}
 body{
   font-family:var(--font);background:var(--bg-0);color:var(--t1);
   -webkit-font-smoothing:auto;min-height:100vh;line-height:1.6;overflow-x:hidden;
@@ -76,7 +76,10 @@ button{cursor:pointer;border:none;background:none;font-family:inherit;}
   background:var(--bg-1);
   border-bottom:3px solid var(--bg-3);
   box-shadow:0 2px 8px rgba(60,40,10,0.15);
+  will-change:box-shadow;
+  transition:box-shadow 0.2s ease;
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+  contain:layout style;
 }
 .topnav.scrolled{box-shadow:0 4px 16px rgba(60,40,10,0.25);}
 .nav-brand{display:flex;align-items:center;gap:10px;}
@@ -146,7 +149,7 @@ button{cursor:pointer;border:none;background:none;font-family:inherit;}
 
 /* ══════ APP LAYOUT ══════ */
 .app-layout{min-height:100vh;padding-top:var(--nav-h);}
-.app-main{max-width:1400px;margin:0 auto;padding:20px 24px 60px;}
+.app-main{max-width:1400px;margin:0 auto;padding:20px 24px 60px;contain:style;}
 
 /* ══════ PAGE HEADER ══════ */
 .page-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;}
@@ -948,3 +951,18 @@ button{cursor:pointer;border:none;background:none;font-family:inherit;}
 .skel-text{height:12px;width:60%;margin-bottom:6px;}
 .skel-text.short{width:35%;}
 .skel-text.long{width:85%;}
+
+/* ─── Responsive Fixes ────────────────────────────────── */
+@media (max-width: 768px) {
+  .calculator-grid { grid-template-columns: 1fr !important; }
+  .analytics-stats-grid { grid-template-columns: repeat(2, 1fr) !important; }
+  .compare-inputs { flex-direction: column !important; }
+  .extension-layout { grid-template-columns: 1fr !important; }
+  .extension-steps { grid-template-columns: 1fr !important; }
+  .share-card { max-width: 100% !important; width: 100% !important; }
+}
+
+@media (max-width: 480px) {
+  .analytics-stats-grid { grid-template-columns: 1fr !important; }
+  .stats-row { grid-template-columns: repeat(2, 1fr) !important; }
+}

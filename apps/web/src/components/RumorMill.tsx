@@ -118,11 +118,11 @@ export default function RumorMill({ onRumorEvent }: RumorMillProps) {
 
   const typeIcon = (t: Rumor['type']) => {
     switch (t) {
-      case 'whale': return '🐋';
+      case 'whale': return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M2 6c.6.5 1.2 1 2.5 1C6 7 6 5 8 5s2 2 3.5 2 1.5-2 3.5-2 2 2 3.5 2 1.5-2 2.5-2"/><path d="M2 12c.6.5 1.2 1 2.5 1 1.5 0 1.5-2 3.5-2s2 2 3.5 2 1.5-2 3.5-2 2 2 3.5 2 1.5-2 2.5-2"/><path d="M2 18c.6.5 1.2 1 2.5 1 1.5 0 1.5-2 3.5-2s2 2 3.5 2 1.5-2 3.5-2 2 2 3.5 2 1.5-2 2.5-2"/></svg>;
       case 'alpha': return '[Alpha]';
-      case 'rug': return '🚩';
+      case 'rug': return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>;
       case 'dev': return '[Alert]';
-      case 'kol': return '💬';
+      case 'kol': return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>;
     }
   };
 

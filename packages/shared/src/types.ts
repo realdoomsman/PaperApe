@@ -74,6 +74,7 @@ export interface Position {
   token_image: string | null;
   entry_price: number;       // price per token in SOL at buy time
   entry_price_usd?: number;   // USD price per token at entry
+  entry_market_cap_usd?: number; // market cap in USD at entry
   amount_sol: number;         // SOL invested
   tokens_bought: number;      // total tokens received
   tokens_remaining: number;   // tokens still held
@@ -104,12 +105,11 @@ export interface Trade {
   token_image?: string | null;
   amount_sol: number;
   amount_tokens: number;
-  execution_price: number;    // actual price after slippage
-  market_price: number;       // price before slippage
+  execution_price: number;    // actual fill price
+  market_price: number;       // market price at time of trade
   price_usd?: number;         // USD price per token at execution
   market_cap_usd?: number;    // market cap at execution, when available
   is_add_on?: boolean;         // buy fill added to an existing open position
-  slippage_applied: number;   // percentage
   fee_applied: number;        // SOL
   priority_fee?: number;      // SOL
   realized_pnl_sol?: number;  // SOL realized by this sell-like trade
@@ -134,7 +134,6 @@ export interface LeaderboardEntry {
 export interface BuyRequest {
   token_address: string;
   amount_sol: number;
-  slippage_tolerance?: number; // max slippage %, default 15
   priority?: 'normal' | 'turbo' | 'yolo'; // transaction priority tier
 }
 
@@ -166,7 +165,6 @@ export interface CreateDCAOrderRequest {
   amount_per_buy: number;
   interval: DCAInterval;
   total_buys: number;
-  slippage?: number;
 }
 
 export interface DCAOrder {
@@ -178,7 +176,6 @@ export interface DCAOrder {
   interval: DCAInterval;
   total_buys: number;
   completed_buys: number;
-  slippage: number;
   status: 'active' | 'paused' | 'completed' | 'cancelled';
   next_buy_at: number;
   created_at: string;

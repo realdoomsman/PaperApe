@@ -75,6 +75,9 @@ alertsRouter.post('/', async (req: any, res) => {
     if (!['above', 'below'].includes(condition)) {
       return res.status(400).json({ success: false, error: 'condition must be "above" or "below"' });
     }
+    if (isNaN(parseFloat(target_price))) {
+      return res.status(400).json({ success: false, error: 'target_price must be a valid number' });
+    }
 
     const alert: Alert = {
       id: '',

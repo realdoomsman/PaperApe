@@ -65,20 +65,17 @@ export function startRugDetector() {
           }
         }
       } else {
-        // Production: query each user's positions subcollection
-        const usersSnap = await db.collection('users').get();
-        for (const userDoc of usersSnap.docs) {
-          const posSnap = await db.collection('users').doc(userDoc.id).collection('positions')
-            .where('status', '==', 'open')
-            .get();
-          for (const doc of posSnap.docs) {
-            openPositions.push({
-              id: doc.id,
-              _ref: doc.ref,
-              _userId: userDoc.id,
-              ...doc.data() as any,
-            });
-          }
+        // Production: single collectionGroup query instead of N+1
+        const posSnap = await db.collectionGroup('positions')
+          .where('status', '==', 'open')
+          .get();
+        for (const doc of posSnap.docs) {
+          openPositions.push({
+            id: doc.id,
+            _ref: doc.ref,
+            _userId: doc.ref.parent.parent!.id,
+            ...doc.data() as any,
+          });
         }
       }
 
@@ -87,10 +84,21 @@ export function startRugDetector() {
       // Deduplicate tokens
       const uniqueTokens = [...new Set(openPositions.map((p) => p.token_address))];
 
-      for (const tokenAddress of uniqueTokens) {
-        try {
-          const priceData = await getTokenPrice(tokenAddress);
+      // Batch fetch prices in parallel
+      const priceMap: Record<string, { priceSol: number; priceUsd: number; liquidityUsd: number }> = {};
+      await Promise.all(
+        uniqueTokens.map(async (tokenAddress) => {
+          try {
+            priceMap[tokenAddress] = await getTokenPrice(tokenAddress);
+          } catch { /* skip */ }
+        })
+      );
 
+      for (const tokenAddress of uniqueTokens) {
+        const priceData = priceMap[tokenAddress];
+        if (!priceData) continue;
+
+        try {
           // Update all positions for this token with current price
           const tokenPositions = openPositions.filter((p) => p.token_address === tokenAddress);
           const positionsToRug = tokenPositions.filter((pos) =>
@@ -140,7 +148,7 @@ export function startRugDetector() {
             }
           }
         } catch (err) {
-          // Price fetch failed — skip this token
+          // Price processing failed — skip this token
         }
       }
     } catch (err) {

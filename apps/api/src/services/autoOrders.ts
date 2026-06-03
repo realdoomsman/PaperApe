@@ -128,11 +128,20 @@ export function startAutoOrderTicker() {
       const { getTokenPrice } = await import('./birdeye.js');
       const prices: Record<string, number> = {};
 
-      for (const addr of uniqueTokens) {
-        try {
-          const p = await getTokenPrice(addr);
-          prices[addr] = p.priceSol;
-        } catch { /* skip */ }
+      // Batch in groups of 5 for parallel fetching
+      for (let i = 0; i < uniqueTokens.length; i += 5) {
+        const batch = uniqueTokens.slice(i, i + 5);
+        const results = await Promise.all(
+          batch.map(async (addr) => {
+            try {
+              const p = await getTokenPrice(addr);
+              return { addr, price: p.priceSol };
+            } catch { return null; }
+          })
+        );
+        for (const r of results) {
+          if (r) prices[r.addr] = r.price;
+        }
       }
 
       // Check each order

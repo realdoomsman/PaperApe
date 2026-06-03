@@ -98,7 +98,7 @@ export default function ShareCard({
       <div onClick={e => e.stopPropagation()} style={{ maxWidth: 460, width: '100%', padding: 0 }}>
 
         {/* The renderable card */}
-        <div ref={cardRef} style={{
+        <div ref={cardRef} className="share-card" style={{
           width: 440,
           padding: 32,
           borderRadius: 20,
@@ -212,11 +212,11 @@ export default function ShareCard({
                 Download
               </button>
               <button onClick={shareToX} className="btn primary haptic" style={{ flex: 1, justifyContent: 'center', padding: '12px 0', fontSize: 12, fontWeight: 600 }}>
-                Share to 𝕏
+                Share to <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" stroke="none" style={{display:'inline',verticalAlign:'middle'}}><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
               </button>
             </>
           )}
-          <button onClick={onClose} className="btn haptic" style={{ padding: '12px 16px', fontSize: 12 }}>✕</button>
+          <button onClick={onClose} className="btn haptic" style={{ padding: '12px 16px', fontSize: 12 }}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
         </div>
       </div>
     </div>

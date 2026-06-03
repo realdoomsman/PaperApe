@@ -154,7 +154,7 @@ export default function AnalyticsPage() {
       ) : (
         <>
           {/* Key Metrics */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 16 }}>
+          <div className="analytics-stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 16 }}>
             {[
               { label: 'Total PnL', value: `${stats.totalPnl >= 0 ? '+' : ''}${stats.totalPnl.toFixed(4)}`, sub: 'SOL', cls: stats.totalPnl >= 0 ? 'up' : 'down' },
               { label: 'Win Rate', value: `${stats.sellCount > 0 ? ((stats.wins / stats.sellCount) * 100).toFixed(1) : 0}`, sub: '%', cls: stats.sellCount > 0 && stats.wins / stats.sellCount > 0.5 ? 'up' : 'down' },

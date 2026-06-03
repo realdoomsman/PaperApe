@@ -355,6 +355,13 @@ async function handleClientEvent(client: ClientState, event: WsClientEvent) {
       break;
 
     case 'subscribe_price':
+      if (!client.authenticated) {
+        // Allow up to 3 subscriptions for unauthenticated users (public preview)
+        if (client.subscriptions.size >= 3) {
+          sendToClient(client, { type: 'error', message: 'Authentication required for more subscriptions' });
+          return;
+        }
+      }
       handleSubscribe(client, event.token_address);
       break;
 

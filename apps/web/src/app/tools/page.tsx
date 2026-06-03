@@ -1,5 +1,5 @@
 'use client';
-import { useState, useCallback } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import AppShell from '@/components/AppShell';
 import { useMode } from '@/components/ModeContext';
 import { apiRequest } from '@/lib/api';
@@ -12,7 +12,7 @@ export default function ToolsPage() {
   const [psBalance, setPsBalance] = useState('100');
   const [psRisk, setPsRisk] = useState('2');
   const [psStop, setPsStop] = useState('10');
-  const psResult = useCallback(() => {
+  const psResult = useMemo(() => {
     const b = parseFloat(psBalance || '0'), r = parseFloat(psRisk || '0'), s = parseFloat(psStop || '1');
     if (!Number.isFinite(b) || !Number.isFinite(r) || !Number.isFinite(s) || s <= 0) return '0.0000';
     return ((b * (r / 100)) / (s / 100)).toFixed(4);
@@ -22,7 +22,7 @@ export default function ToolsPage() {
   const [pnlEntry, setPnlEntry] = useState('0.00001');
   const [pnlExit, setPnlExit] = useState('0.00003');
   const [pnlAmt, setPnlAmt] = useState('1');
-  const pnlResult = useCallback(() => {
+  const pnlResult = useMemo(() => {
     const e = parseFloat(pnlEntry || '0'), x = parseFloat(pnlExit || '0'), a = parseFloat(pnlAmt || '0');
     if (e === 0) return { sol: '0', pct: '0' };
     const tokens = a / e;
@@ -64,7 +64,7 @@ export default function ToolsPage() {
   // Slippage Calculator
   const [slAmt, setSlAmt] = useState('1');
   const [slPool, setSlPool] = useState('50');
-  const slResult = useCallback(() => {
+  const slResult = useMemo(() => {
     const a = parseFloat(slAmt || '0'), p = parseFloat(slPool || '1');
     if (!Number.isFinite(a) || !Number.isFinite(p) || p <= 0) {
       return { pct: '0.00', impact: 'Low', color: 'var(--green)' };
@@ -90,8 +90,8 @@ export default function ToolsPage() {
             <div className="tool-field"><div className="tool-label">Risk %</div><input className="term-inp" type="number" value={psRisk} onChange={(e) => setPsRisk(e.target.value)} /></div>
           </div>
           <div className="tool-field"><div className="tool-label">Stop Loss %</div><input className="term-inp" type="number" value={psStop} onChange={(e) => setPsStop(e.target.value)} /></div>
-          <div className="tool-result"><div className="tool-result-label">Recommended Position Size</div><div className="tool-result-val">{psResult()} <span style={{ fontSize: 12, color: 'var(--t3)' }}>SOL</span></div></div>
-          {mode === 'beginner' && <p style={{ fontSize: 11, color: 'var(--t3)', marginTop: 10, lineHeight: 1.6 }}>This tells you how much SOL to risk per trade. With {psRisk}% risk on {psBalance} SOL and a {psStop}% stop, you should trade {psResult()} SOL.</p>}
+          <div className="tool-result"><div className="tool-result-label">Recommended Position Size</div><div className="tool-result-val">{psResult} <span style={{ fontSize: 12, color: 'var(--t3)' }}>SOL</span></div></div>
+          {mode === 'beginner' && <p style={{ fontSize: 11, color: 'var(--t3)', marginTop: 10, lineHeight: 1.6 }}>This tells you how much SOL to risk per trade. With {psRisk}% risk on {psBalance} SOL and a {psStop}% stop, you should trade {psResult} SOL.</p>}
         </div>
 
         {/* PnL Calculator */}
@@ -105,8 +105,8 @@ export default function ToolsPage() {
           <div className="tool-field"><div className="tool-label">Amount (SOL)</div><input className="term-inp" type="number" value={pnlAmt} onChange={(e) => setPnlAmt(e.target.value)} /></div>
           <div className="tool-result">
             <div style={{ display: 'flex', gap: 24 }}>
-              <div><div className="tool-result-label">PnL (SOL)</div><div className={`tool-result-val ${parseFloat(pnlResult().sol) >= 0 ? 'up' : 'down'}`}>{parseFloat(pnlResult().sol) >= 0 ? '+' : ''}{pnlResult().sol}</div></div>
-              <div><div className="tool-result-label">PnL %</div><div className={`tool-result-val ${parseFloat(pnlResult().pct) >= 0 ? 'up' : 'down'}`}>{parseFloat(pnlResult().pct) >= 0 ? '+' : ''}{pnlResult().pct}%</div></div>
+              <div><div className="tool-result-label">PnL (SOL)</div><div className={`tool-result-val ${parseFloat(pnlResult.sol) >= 0 ? 'up' : 'down'}`}>{parseFloat(pnlResult.sol) >= 0 ? '+' : ''}{pnlResult.sol}</div></div>
+              <div><div className="tool-result-label">PnL %</div><div className={`tool-result-val ${parseFloat(pnlResult.pct) >= 0 ? 'up' : 'down'}`}>{parseFloat(pnlResult.pct) >= 0 ? '+' : ''}{pnlResult.pct}%</div></div>
             </div>
           </div>
         </div>
@@ -154,8 +154,8 @@ export default function ToolsPage() {
           </div>
           <div className="tool-result">
             <div style={{ display: 'flex', gap: 24 }}>
-              <div><div className="tool-result-label">Est. Slippage</div><div className="tool-result-val" style={{ color: slResult().color }}>{slResult().pct}%</div></div>
-              <div><div className="tool-result-label">Impact Level</div><div className="tool-result-val" style={{ color: slResult().color, fontSize: 18 }}>{slResult().impact}</div></div>
+              <div><div className="tool-result-label">Est. Slippage</div><div className="tool-result-val" style={{ color: slResult.color }}>{slResult.pct}%</div></div>
+              <div><div className="tool-result-label">Impact Level</div><div className="tool-result-val" style={{ color: slResult.color, fontSize: 18 }}>{slResult.impact}</div></div>
             </div>
           </div>
           {mode === 'beginner' && <p style={{ fontSize: 11, color: 'var(--t3)', marginTop: 10, lineHeight: 1.6 }}>Larger trades on smaller pools = more slippage. Keep slippage under 5% for safer execution.</p>}
