@@ -262,100 +262,52 @@ async function fetchTrenches(): Promise<{ newPairs: TokenData[]; finalStretch: T
 
   let allPairs: TokenData[] = [];
 
-  // PRIMARY: Birdeye new listings (paid, fresher data with pump.fun support)
-  if (BIRDEYE_KEY) {
-    try {
-      const birdRes = await fetch(`${BIRDEYE_API}/defi/v2/tokens/new_listing?meme_platform_enabled=true&limit=20`, {
-        headers: { 'X-API-KEY': BIRDEYE_KEY, 'x-chain': 'solana', 'Accept': 'application/json' },
-        signal: AbortSignal.timeout(8000),
-      });
+  // DexScreener token profiles — shows recently active tokens
+  try {
+    const res = await fetch(`${DEXSCREENER_API}/token-profiles/latest/v1`, {
+      headers: { 'Accept': 'application/json' },
+      signal: AbortSignal.timeout(8000),
+    });
 
-      if (birdRes.ok) {
-        const birdData = await birdRes.json();
-        const items = birdData?.data?.items ?? birdData?.data ?? [];
+    if (!res.ok) throw new Error(`DexScreener returned ${res.status}`);
 
-        for (const t of items) {
-          if (!t.address) continue;
-          const solPrice = solPriceCache.price || 145;
-          const priceUsd = t.price ?? t.value ?? 0;
-          const createdAtMs = t.createdAt ? Number(t.createdAt) * 1000 : (t.openTime ? Number(t.openTime) * 1000 : null);
-          allPairs.push({
-            address: t.address,
-            symbol: t.symbol ?? '???',
-            name: t.name ?? 'Unknown',
-            priceUsd,
-            priceSol: solPrice > 0 ? priceUsd / solPrice : 0,
-            priceChange24h: t.priceChange24hPercent ?? t.price_change_24h_percent ?? 0,
-            volume24h: t.volume24h ?? t.v24hUSD ?? 0,
-            liquidity: t.liquidity ?? t.realLiquidity ?? 0,
-            liquidityUsd: t.liquidity ?? t.realLiquidity ?? 0,
-            marketCap: t.mc ?? t.market_cap ?? t.fdv ?? 0,
-            market_cap_usd: t.mc ?? t.market_cap ?? t.fdv ?? 0,
-            pairAddress: '',
-            dex: t.source ?? t.memeplatform ?? 'birdeye',
-            image: t.logoURI ?? t.icon ?? null,
-            createdAt: createdAtMs ? new Date(createdAtMs).toISOString() : null,
-            ageMinutes: createdAtMs ? Math.floor((Date.now() - createdAtMs) / 60000) : undefined,
+    const data = await res.json();
+    const solTokens = (data ?? [])
+      .filter((t: any) => t.chainId === 'solana')
+      .slice(0, 40);
+
+    if (solTokens.length > 0) {
+      const addresses = solTokens.map((t: any) => t.tokenAddress).filter(Boolean);
+      const uniqueAddrs = [...new Set(addresses)].slice(0, 30) as string[];
+
+      for (let i = 0; i < uniqueAddrs.length; i += 5) {
+        const batch = uniqueAddrs.slice(i, i + 5);
+        try {
+          const batchRes = await fetch(`${DEXSCREENER_API}/latest/dex/tokens/${batch.join(',')}`, {
+            headers: { 'Accept': 'application/json' },
+            signal: AbortSignal.timeout(8000),
           });
-        }
+          if (batchRes.ok) {
+            const batchData = await batchRes.json();
+            const pairs = (batchData.pairs ?? [])
+              .filter((p: any) => p.chainId === 'solana' && (p.liquidity?.usd ?? 0) > 500)
+              .sort((a: any, b: any) => (b.volume?.h24 ?? 0) - (a.volume?.h24 ?? 0));
 
-        if (allPairs.length > 0) {
-          console.log(`[tokens] Fetched ${allPairs.length} new listings from Birdeye`);
-        }
-      }
-    } catch (err: any) {
-      console.warn('[tokens] Birdeye new_listing failed, falling back to DexScreener:', err.message);
-    }
-  }
-
-  // FALLBACK: DexScreener token profiles (if Birdeye returned nothing)
-  if (allPairs.length === 0) {
-    try {
-      const res = await fetch(`${DEXSCREENER_API}/token-profiles/latest/v1`, {
-        headers: { 'Accept': 'application/json' },
-        signal: AbortSignal.timeout(8000),
-      });
-
-      if (!res.ok) throw new Error(`DexScreener returned ${res.status}`);
-
-      const data = await res.json();
-      const solTokens = (data ?? [])
-        .filter((t: any) => t.chainId === 'solana')
-        .slice(0, 40);
-
-      if (solTokens.length > 0) {
-        const addresses = solTokens.map((t: any) => t.tokenAddress).filter(Boolean);
-        const uniqueAddrs = [...new Set(addresses)].slice(0, 30) as string[];
-
-        for (let i = 0; i < uniqueAddrs.length; i += 5) {
-          const batch = uniqueAddrs.slice(i, i + 5);
-          try {
-            const batchRes = await fetch(`${DEXSCREENER_API}/latest/dex/tokens/${batch.join(',')}`, {
-              headers: { 'Accept': 'application/json' },
-              signal: AbortSignal.timeout(8000),
-            });
-            if (batchRes.ok) {
-              const batchData = await batchRes.json();
-              const pairs = (batchData.pairs ?? [])
-                .filter((p: any) => p.chainId === 'solana')
-                .sort((a: any, b: any) => (b.volume?.h24 ?? 0) - (a.volume?.h24 ?? 0));
-
-              const seen = new Set(allPairs.map(t => t.address));
-              for (const p of pairs) {
-                const addr = p.baseToken?.address;
-                if (!addr || seen.has(addr)) continue;
-                seen.add(addr);
-                const parsed = parsePair(p);
-                if (parsed) allPairs.push(parsed);
-              }
+            const seen = new Set(allPairs.map(t => t.address));
+            for (const p of pairs) {
+              const addr = p.baseToken?.address;
+              if (!addr || seen.has(addr)) continue;
+              seen.add(addr);
+              const parsed = parsePair(p);
+              if (parsed) allPairs.push(parsed);
             }
-          } catch {}
-        }
-        console.log(`[tokens] Fetched ${allPairs.length} tokens from DexScreener (fallback)`);
+          }
+        } catch {}
       }
-    } catch (err) {
-      console.error('[tokens] DexScreener trenches fallback error:', err);
+      console.log(`[tokens] Fetched ${allPairs.length} trenches tokens from DexScreener`);
     }
+  } catch (err) {
+    console.error('[tokens] DexScreener trenches error:', err);
   }
 
   // Categorize:
