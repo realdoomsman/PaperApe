@@ -187,61 +187,13 @@ async function fetchSolPrice(): Promise<number> {
   return solPriceCache.price || 145;
 }
 
-// ─── Trending (Birdeye primary, DexScreener fallback) ───
+// ─── Trending (DexScreener boosts primary) ──────────────
 async function fetchDexScreenerTrending(): Promise<TokenData[]> {
   if (Date.now() - trendingCacheTime < TRENDING_CACHE_TTL && trendingCache.length > 0) {
     return trendingCache;
   }
 
-  // PRIMARY: Birdeye trending API (paid, fresher data)
-  if (BIRDEYE_KEY) {
-    try {
-      const birdRes = await fetch(`${BIRDEYE_API}/defi/token_trending?sort_by=rank&sort_type=desc&limit=20`, {
-        headers: { 'X-API-KEY': BIRDEYE_KEY, 'x-chain': 'solana', 'Accept': 'application/json' },
-        signal: AbortSignal.timeout(8000),
-      });
-
-      if (birdRes.ok) {
-        const birdData = await birdRes.json();
-        const items = birdData?.data?.items ?? birdData?.data?.tokens ?? birdData?.data ?? [];
-        const tokens: TokenData[] = [];
-
-        for (const t of items) {
-          if (!t.address) continue;
-          const solPrice = solPriceCache.price || 145;
-          const priceUsd = t.price ?? t.value ?? 0;
-          tokens.push({
-            address: t.address,
-            symbol: t.symbol ?? '???',
-            name: t.name ?? 'Unknown',
-            priceUsd,
-            priceSol: solPrice > 0 ? priceUsd / solPrice : 0,
-            priceChange24h: t.priceChange24hPercent ?? t.price_change_24h_percent ?? 0,
-            volume24h: t.volume24h ?? t.v24hUSD ?? 0,
-            liquidity: t.liquidity ?? t.realLiquidity ?? 0,
-            liquidityUsd: t.liquidity ?? t.realLiquidity ?? 0,
-            marketCap: t.mc ?? t.market_cap ?? t.fdv ?? 0,
-            market_cap_usd: t.mc ?? t.market_cap ?? t.fdv ?? 0,
-            pairAddress: '',
-            dex: t.source ?? 'birdeye',
-            image: t.logoURI ?? t.icon ?? null,
-            createdAt: null,
-          });
-        }
-
-        if (tokens.length > 0) {
-          trendingCache = tokens;
-          trendingCacheTime = Date.now();
-          console.log(`[tokens] Fetched ${tokens.length} trending tokens from Birdeye`);
-          return trendingCache;
-        }
-      }
-    } catch (err: any) {
-      console.warn('[tokens] Birdeye trending failed, falling back to DexScreener:', err.message);
-    }
-  }
-
-  // FALLBACK: DexScreener boosts
+  // PRIMARY: DexScreener boosted tokens (shows actually trending coins with real volume)
   try {
     const boostRes = await fetch(`${DEXSCREENER_API}/token-boosts/top/v1`, {
       headers: { 'Accept': 'application/json' },
@@ -269,7 +221,7 @@ async function fetchDexScreenerTrending(): Promise<TokenData[]> {
             if (batchRes.ok) {
               const batchData = await batchRes.json();
               const pairs = (batchData.pairs ?? [])
-                .filter((p: any) => p.chainId === 'solana' && (p.liquidity?.usd ?? 0) > 500)
+                .filter((p: any) => p.chainId === 'solana' && (p.liquidity?.usd ?? 0) > 5000 && (p.volume?.h24 ?? 0) > 1000)
                 .sort((a: any, b: any) => (b.volume?.h24 ?? 0) - (a.volume?.h24 ?? 0));
 
               const seen = new Set(allTokens.map(t => t.address));
