@@ -154,6 +154,12 @@ export default function HomePage() {
         </section>
 
         <footer className="landing-footer">
+          <div style={{ marginBottom: 10, display: 'flex', justifyContent: 'center', gap: 16 }}>
+            <a href="https://github.com/realdoomsman/PaperApe" target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: 'var(--t1)', textDecoration: 'none', fontWeight: 600 }}>GitHub</a>
+            <a href="https://x.com/PaperApeFun" target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: 'var(--t1)', textDecoration: 'none', fontWeight: 600 }}>X / Twitter</a>
+            <a href="https://pump.fun/coin/C25SnCHy5Q78eicLphV2jfnMH4eJ5Jv5Ro3BAf4dpump" target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: 'var(--t1)', textDecoration: 'none', fontWeight: 600 }}>Pump.fun</a>
+            <a href="https://dexscreener.com/solana/C25SnCHy5Q78eicLphV2jfnMH4eJ5Jv5Ro3BAf4dpump" target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: 'var(--t1)', textDecoration: 'none', fontWeight: 600 }}>DexScreener</a>
+          </div>
           <div style={{ marginBottom: 8, fontSize: 10, color: 'var(--red)', fontWeight: 600 }}>
             PaperApe is a simulated environment for educational purposes only. No real funds are traded. This is not financial advice.
           </div>
