@@ -54,6 +54,26 @@ export default function HomePage() {
           </div>
         </section>
 
+        <section style={{ maxWidth: 700, margin: '0 auto', padding: '0 20px 40px', textAlign: 'center' }}>
+          <div style={{ background: 'var(--bg-1)', border: '1px solid var(--accent-l)', borderRadius: 16, padding: '24px 20px', position: 'relative' }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--accent-l)', textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 12 }}>Official Contract Address</div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <code id="ca-text" style={{ fontSize: 13, fontWeight: 600, color: 'var(--t0)', background: 'var(--bg-2)', padding: '8px 14px', borderRadius: 8, border: '1px solid var(--border-1)', wordBreak: 'break-all', fontFamily: 'monospace' }}>C25SnCHy5Q78eicLphV2jfnMH4eJ5Jv5Ro3BAf4dpump</code>
+              <button
+                onClick={() => { navigator.clipboard.writeText('C25SnCHy5Q78eicLphV2jfnMH4eJ5Jv5Ro3BAf4dpump'); const btn = document.getElementById('copy-ca-btn'); if (btn) { btn.textContent = 'Copied'; setTimeout(() => { btn.textContent = 'Copy'; }, 2000); } }}
+                id="copy-ca-btn"
+                style={{ padding: '8px 16px', fontSize: 11, fontWeight: 700, background: 'var(--accent-l)', color: 'var(--bg-0)', border: 'none', borderRadius: 8, cursor: 'pointer', whiteSpace: 'nowrap' }}
+              >Copy</button>
+            </div>
+            <div style={{ marginTop: 12, display: 'flex', justifyContent: 'center', gap: 12 }}>
+              <a href="https://dexscreener.com/solana/C25SnCHy5Q78eicLphV2jfnMH4eJ5Jv5Ro3BAf4dpump" target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: 'var(--accent-l)', textDecoration: 'none', fontWeight: 600 }}>DexScreener</a>
+              <a href="https://birdeye.so/token/C25SnCHy5Q78eicLphV2jfnMH4eJ5Jv5Ro3BAf4dpump?chain=solana" target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: 'var(--accent-l)', textDecoration: 'none', fontWeight: 600 }}>Birdeye</a>
+              <a href="https://pump.fun/coin/C25SnCHy5Q78eicLphV2jfnMH4eJ5Jv5Ro3BAf4dpump" target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: 'var(--accent-l)', textDecoration: 'none', fontWeight: 600 }}>Pump.fun</a>
+            </div>
+            <div style={{ marginTop: 10, fontSize: 10, color: 'var(--t3)' }}>This is the only official token. Verify on this website only.</div>
+          </div>
+        </section>
+
         <section className="plats">
           <div className="plats-label">Works inside your favorite terminal</div>
           <div className="plats-row">
